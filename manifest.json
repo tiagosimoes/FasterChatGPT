@@ -1,0 +1,8 @@
+{
+  "name": "Never Stop Learning",
+  "short_name": "Never Stop Learning",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#39a1fa",
+  "theme_color": "#39a1fa"
+}

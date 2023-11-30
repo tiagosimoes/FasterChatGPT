@@ -5,74 +5,129 @@
   <title>OpenAI Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <meta name="apple-mobile-web-app-status-bar-style" content="rgb(57, 161, 250)">
+  <link rel="manifest" href="/manifest.json">
+
 </head>
 
 <body>
+  <div style="background-color: rgb(57, 161, 250); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">Never Stop Learning</div>
   <div id="chatHistory"></div>
   <form id="chatForm">
-    <input id="userInput" type="text" autofocus="true" value="Portugal"></input>
+    <input id="userInput" type="text" placeholder="...or anything else (related or not)"></input>
     <button type="submit" id="sendButton" style="display: none;">Send</button>
   </form>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      font-size: large;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    p {
+      margin-block-end: 0;
+      margin-block-start: 0;
+    }
+
     #chatHistory {
-      border: 1px solid black;
-      height: 300px;
-      width: 100%;
-      /* Adjust max width */
-      overflow: scroll;
       margin: auto;
-      /* Center the chat history */
+      margin-bottom: 90px;
+    }
+
+    #chatForm {
+      position: fixed;
+      display: block;
+      width: 100%;
+      bottom: 0;
+      padding: 10px;
+      background-color: #fff;
     }
 
     #userInput {
       width: 100%;
-      /* Adjust width for padding */
       margin: auto;
-      /* Center the input */
       box-sizing: border-box;
-      /* Include padding in width calculation */
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
     }
 
+
+    #userInput:focus {
+      outline-width: 0;
+    } 
     .user,
     .assistant,
-    .thinking {
-      border-radius: 5px;
+    .thinking,
+    .suggestion {
+      border-radius: 10px;
       padding: 10px;
       margin: 10px auto;
       width: fit-content;
       max-width: 90%;
-      /* Ensure messages don't overflow on small screens */
-      white-space: pre-wrap;
-      /* Preserve line breaks and spaces */
       max-width: 80%;
+      animation: grow .2s forwards;
+
     }
 
     .user {
       background-color: rgb(57, 161, 250);
-      color: white;
+      color: #ffffffee;
       margin-left: 20px;
+      transform-origin: top left;
     }
 
     .assistant,
-    .thinking {
+    .thinking,
+    .suggestion {
       background-color: rgb(228, 227, 230);
-      color: black;
+      color: #000000dd;
       margin-right: 20px;
+      transform-origin: top right;
     }
 
-    @media (max-width: 600px) {
-      #chatHistory,
-      #userInput {
-        max-width: none;
-        /* Allow full width on small screens */
+    .suggestion {
+      cursor: pointer;
+      color: rgb(1, 66, 128);
+      font-size: 16px;
+      opacity: .7;
+    }
+
+    .suggestion:hover {
+      opacity: 1;
+    }
+
+    @keyframes grow {
+      from {
+        transform: scale3d(0, 0, 1);
+      }
+
+      to {
+        transform: scale3d(1, 1, 1);
       }
     }
   </style>
 
   <script>
+    const initialPrompt = "Give me a list of 7 different and interesting topics I could explore. Be very succinct. Just output the list.";
+    chatComplete([{ "role": "user", "content": initialPrompt }])
+      .then(message => {
+        message = "What do you want to explore? WHAT NEXT?" + message;
+        if (document.readyState === 'loading') {
+          // If the DOM is still loading, wait for it to complete
+          document.addEventListener("DOMContentLoaded", () => appendMessage("assistant", message));
+        } else {
+          // If the DOM is already loaded, call appendMessage immediately
+          appendMessage("assistant", message);
+        }
+      });
+
+
+
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
 
@@ -88,31 +143,48 @@ Clarifications, if necessary, are included in the 3 suggestions.
     let chatHistory = [{ "role": "system", "content": instructions }];
 
     function appendMessage(role, message) {
-      if (role !== "thinking")
-        chatHistory.push({ role, content: message });
       const chatHistoryElement = document.getElementById('chatHistory');
-      const newMessageElement = document.createElement('p');
-      newMessageElement.classList.add(role);
-      newMessageElement.textContent = `${message}`;
-      if (role === "assistant")
-        chatHistoryElement.lastChild.remove(); // remove the thinking message
-      chatHistoryElement.appendChild(newMessageElement);
-      newMessageElement.scrollIntoView({ behavior: 'smooth' });
+      chatHistory.push({ role, content: message });
+
+      function addBubble(role, message) {
+        const newMessageElement = document.createElement('div');
+        newMessageElement.classList.add(role);
+        newMessageElement.innerHTML = marked.parse(message, { "breaks": true }).trim();
+        if (role === "suggestion")
+          newMessageElement.addEventListener('click', () => sendMessage(message));
+        chatHistoryElement.appendChild(newMessageElement);
+        newMessageElement.scrollIntoView({ behavior: 'smooth' });
+        if (role === "suggestion")
+          Array.from(document.querySelectorAll(".assistant")).pop()?.scrollIntoView({ behavior: 'smooth' });
+      }
+
+      if (role === "assistant") {
+        chatHistoryElement.lastChild?.remove(); // remove the thinking message
+        [message, rawSuggestions] = message.split("WHAT NEXT?");
+        // Regular expression to match the leading numbers and period
+        const numberAndDot = /^\d+\.\s+/;
+        const suggestions = rawSuggestions.split("\n").map(s => s.replace(numberAndDot, '').trim()).filter(s => s != "");
+        message = message.trim();
+        addBubble(role, message);
+        suggestions.forEach(suggestion => {
+          addBubble("suggestion", suggestion);
+          possibleNewChatHistory = [...chatHistory].concat([{ "role": "user", "content": suggestion }]);
+          chatComplete(possibleNewChatHistory);
+        });
+      } else {
+        addBubble(role, message);
+      }
+
+
       if (role === "user")
-        appendMessage("thinking", "...");
+        addBubble("thinking", "...");
     }
 
     async function sendMessage(userInput) {
       appendMessage("user", userInput);
       try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer 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` },
-          body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: chatHistory })
-        });
-        if (!response.ok) throw new Error("API communication error");
-        const { choices } = await response.json();
-        appendMessage("assistant", choices[0].message.content);
+        newMessage = await chatComplete(chatHistory);
+        appendMessage("assistant", newMessage);
       } catch (error) {
         appendMessage("assistant", error.message);
       }
@@ -124,6 +196,54 @@ Clarifications, if necessary, are included in the 3 suggestions.
       document.getElementById('userInput').value = '';
     });
 
+    async function chatComplete(previousMessages) {
+      const onlyUserMessages = previousMessages.filter(message => message.role === "user").map(message => message.content).join("\n");
+      let message = await getDataFromDB(onlyUserMessages);
+      if (message)
+        return message;
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer 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` },
+        body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: previousMessages })
+      });
+      if (!response.ok) throw new Error("API communication error");
+      const { choices } = await response.json();
+      message = choices[0].message.content;
+      setDataInDB(onlyUserMessages, message);
+      return message;
+    }
+
+    async function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("ChatDB", 1);
+        request.onupgradeneeded = e => e.target.result.createObjectStore("chats", { keyPath: "id" });
+        request.onsuccess = e => {
+          const db = e.target.result;
+          const tx = db.transaction("chats", "readwrite");
+          const store = tx.objectStore("chats");
+          resolve(store);
+        };
+        request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
+      });
+    }
+
+    async function getDataFromDB(key) {
+      const store = await openDB();
+      return new Promise((resolve, reject) => {
+        const request = store.get(key);
+        request.onsuccess = e => resolve(e.target.result ? e.target.result.data : null);
+        request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
+      });
+    }
+
+    async function setDataInDB(key, data) {
+      const store = await openDB();
+      return new Promise((resolve, reject) => {
+        const request = store.put({ id: key, data: data });
+        request.onsuccess = e => resolve(e.target.result);
+        request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
+      });
+    }
   </script>
 </body>
 
