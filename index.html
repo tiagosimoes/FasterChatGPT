@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>OpenAI Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+</head>
+
+<body>
+  <div id="chatHistory"></div>
+  <form id="chatForm">
+    <input id="userInput" type="text" autofocus="true" value="Portugal"></input>
+    <button type="submit" id="sendButton" style="display: none;">Send</button>
+  </form>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    #chatHistory {
+      border: 1px solid black;
+      height: 300px;
+      width: 100%;
+      /* Adjust max width */
+      overflow: scroll;
+      margin: auto;
+      /* Center the chat history */
+    }
+
+    #userInput {
+      width: 100%;
+      /* Adjust width for padding */
+      margin: auto;
+      /* Center the input */
+      box-sizing: border-box;
+      /* Include padding in width calculation */
+    }
+
+    .user,
+    .assistant,
+    .thinking {
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px auto;
+      width: fit-content;
+      max-width: 90%;
+      /* Ensure messages don't overflow on small screens */
+      white-space: pre-wrap;
+      /* Preserve line breaks and spaces */
+      max-width: 80%;
+    }
+
+    .user {
+      background-color: rgb(57, 161, 250);
+      color: white;
+      margin-left: 20px;
+    }
+
+    .assistant,
+    .thinking {
+      background-color: rgb(228, 227, 230);
+      color: black;
+      margin-right: 20px;
+    }
+
+    @media (max-width: 600px) {
+      #chatHistory,
+      #userInput {
+        max-width: none;
+        /* Allow full width on small screens */
+      }
+    }
+  </style>
+
+  <script>
+    const instructions = `
+You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
+
+At the end of any response, write "WHAT NEXT?" and present 3 likely follow-up user prompts.
+
+When a user selects a number (1-3), you should interpret it as a request for the corresponding suggestion. 
+If he doesn't, you should generate new content related to the user's prompt (and possibly to the previous content).
+
+You should always make educated guesses. 
+
+Clarifications, if necessary, are included in the 3 suggestions.
+`;
+    let chatHistory = [{ "role": "system", "content": instructions }];
+
+    function appendMessage(role, message) {
+      if (role !== "thinking")
+        chatHistory.push({ role, content: message });
+      const chatHistoryElement = document.getElementById('chatHistory');
+      const newMessageElement = document.createElement('p');
+      newMessageElement.classList.add(role);
+      newMessageElement.textContent = `${message}`;
+      if (role === "assistant")
+        chatHistoryElement.lastChild.remove(); // remove the thinking message
+      chatHistoryElement.appendChild(newMessageElement);
+      newMessageElement.scrollIntoView({ behavior: 'smooth' });
+      if (role === "user")
+        appendMessage("thinking", "...");
+    }
+
+    async function sendMessage(userInput) {
+      appendMessage("user", userInput);
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer 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` },
+          body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: chatHistory })
+        });
+        if (!response.ok) throw new Error("API communication error");
+        const { choices } = await response.json();
+        appendMessage("assistant", choices[0].message.content);
+      } catch (error) {
+        appendMessage("assistant", error.message);
+      }
+    }
+    document.getElementById('chatForm').addEventListener('submit', function (event) {
+      event.preventDefault(); // Prevent the default form submission
+      const userInput = document.getElementById('userInput').value;
+      sendMessage(userInput); // Call the sendMessage function
+      document.getElementById('userInput').value = '';
+    });
+
+  </script>
+</body>
+
+</html>
