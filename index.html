@@ -11,10 +11,10 @@
 </head>
 
 <body style="background-color: var(--background-color);">
-  <div onclick="document.location.reload(true)"
+  <div onclick="document.location.reload()"
     style="background-color: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">
     Never Stop Learning</div>
-  <button type="button" id="resetButton" onclick="document.location.reload(true)"
+  <button type="button" id="resetButton" onclick="document.location.reload()"
     style="width:22px;height: 42px;border-radius: 10px;padding:0;color: var(--primary-color);background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
   <div id="chatHistory" style="margin: auto;margin-bottom: 90px;">
     <div class="thinking">
@@ -23,7 +23,7 @@
   </div>
   <form id="chatForm"
     style="background-color: var(--background-color);position: fixed;display: block;width: 100%;bottom: 0;padding: 10px;"">
-    <input id=" userInput" type="text" placeholder="...or anything else (related or not)"
+    <input id="userInput" type="text" placeholder="...or anything else (related or not)"
     style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border: 1px solid #ccc;border-radius: 10px;height:42px">
     </input>
     <button type="submit" id="sendButton"
@@ -126,30 +126,38 @@
     const getById = (id) => document.getElementById(id);
     const getDataFromDB = async (key) => await operateDB(key);
     const setDataInDB = async (key, data) => await operateDB(key, data);
+    const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
-    if (!openai_key)
-      alert("Please provide an API key by appending #OPENAI-API-KEY to the URL and refresh the page.");
-    localStorage.setItem('openai_key', openai_key);
-
-    const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
-    getChatCompletion([{ "role": "user", "content": initialPrompt }], temperature = 1.2)
-      .then(message => {
-        message = "What do you want to explore? WHAT NEXT?" + message;
-        if (document.readyState === 'loading')
-          document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", message));
-        else
-          appendMessageToHistory("assistant", message);
-        getById('resetButton').style.opacity = 1;
+    if (!openai_key){
+      document.addEventListener("DOMContentLoaded", () => {
+        appendMessageToHistory("assistant", "Please provide a valid OPEN AI API key");
       });
+      getById('chatForm').addEventListener('submit', function (event) {
+        event.preventDefault(); // Prevent the default form submission
+        const userInput = getById('userInput').value;
+        localStorage.setItem('openai_key', userInput);
+        document.location.reload();
+      });
+    } else {
+      getChatCompletion([{ "role": "user", "content": initialPrompt }], temperature = 1.2)
+        .then(message => {
+          message = "What do you want to explore? WHAT NEXT?" + message;
+          if (document.readyState === 'loading')
+            document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", message));
+          else
+            appendMessageToHistory("assistant", message);
+          getById('resetButton').style.opacity = 1;
+        });
 
 
-    getById('chatForm').addEventListener('submit', function (event) {
-      event.preventDefault(); // Prevent the default form submission
-      const userInput = getById('userInput').value;
-      userSendMessage(userInput);
-      getById('userInput').value = '';
-    });
+      getById('chatForm').addEventListener('submit', function (event) {
+        event.preventDefault(); // Prevent the default form submission
+        const userInput = getById('userInput').value;
+        userSendMessage(userInput);
+        getById('userInput').value = '';
+      });
+    }
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
@@ -250,6 +258,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ` + openai_key },
         body: JSON.stringify({ model: 'gpt-3.5-turbo', messages: previousMessages, temperature: temperature })
       });
+      if (response.status === 401) {
+        localStorage.removeItem('openai_key');
+        document.location.reload();
+      }
       if (!response.ok) throw new Error("API communication error");
       const { choices } = await response.json();
       message = choices[0].message.content;
