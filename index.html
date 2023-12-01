@@ -15,7 +15,7 @@
     style="background-color: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">
     Never Stop Learning</div>
   <button type="button" id="resetButton" onclick="document.location.reload()"
-    style="width:22px;height: 42px;border-radius: 10px;padding:0;color: var(--primary-color);background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
+    style="width:22px;height: 42px;right: 10px;top: 110px;border-radius: 10px;padding:0;color: var(--primary-color);background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
   <div id="chatHistory" style="margin: auto;margin-bottom: 90px;">
     <div class="thinking">
       <p>...</p>
@@ -125,6 +125,8 @@
     const getById = (id) => document.getElementById(id);
     const getDataFromDB = async (key) => await operateDB(key);
     const setDataInDB = async (key, data) => await operateDB(key, data);
+    const updateInputButtonText = () => getById('sendButton').innerText = (getById('userInput').value === "") ? '⤒':'→';
+
     const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
@@ -151,11 +153,17 @@
       getById('chatForm').addEventListener('submit', function (event) {
         event.preventDefault(); // Prevent the default form submission
         const userInput = getById('userInput').value;
+        if (userInput === '') {
+          window.scrollTo({top: 0, behavior: 'smooth'});
+          return;
+        }
         userSendMessage(userInput);
         getById('userInput').value = '';
-        getById('sendButton').innerText= '⤒';
+        updateInputButtonText();
       });
     }
+
+    getById('userInput').addEventListener('input',updateInputButtonText);
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
