@@ -122,22 +122,19 @@
     }
   </style>
   <script>
-    const getById = (id) => document.getElementById(id);
-    const getDataFromDB = async (key) => await operateDB(key);
-    const setDataInDB = async (key, data) => await operateDB(key, data);
+    const getById = id => document.getElementById(id);
+    const getDataFromDB = async key => await operateDB(key);
+    const setDataInDB = async (key, parent, message) => await operateDB(key, parent, message);
     const updateInputButtonText = () => getById('sendButton').innerText = (getById('userInput').value === "") ? '⤒':'→';
 
     const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => {
-        appendMessageToHistory("assistant", "Please provide a valid OpenAI API key");
-      });
+      document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", "Please provide a valid OpenAI API key"));
       getById('chatForm').addEventListener('submit', function (event) {
-        event.preventDefault(); // Prevent the default form submission
-        const userInput = getById('userInput').value;
-        localStorage.setItem('openai_key', userInput);
+        event.preventDefault(); 
+        localStorage.setItem('openai_key', getById('userInput').value);
         setTimeout(() => document.location.reload(), 1000);
       });
     } else {
@@ -151,7 +148,7 @@
           getById('resetButton').style.opacity = 1;
         });
       getById('chatForm').addEventListener('submit', function (event) {
-        event.preventDefault(); // Prevent the default form submission
+        event.preventDefault();
         const userInput = getById('userInput').value;
         if (userInput === '') {
           window.scrollTo({top: 0, behavior: 'smooth'});
@@ -163,7 +160,7 @@
       });
     }
 
-    getById('userInput').addEventListener('input',updateInputButtonText);
+    getById('userInput').addEventListener('input', updateInputButtonText);
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
@@ -200,7 +197,6 @@ Clarifications, if necessary, are included in the 3 suggestions.
         newMessageElement.innerHTML = marked.parse(message, { "breaks": true }).trim();
         if (role === "suggestion")
           newMessageElement.addEventListener('click', () => {
-
             previousSibling = newMessageElement.previousSibling;
             while (previousSibling && previousSibling.classList.contains("suggestion")) {
               convertHiddenSuggestionToVisited(previousSibling);
@@ -212,7 +208,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
               nextSibling = nextSibling.nextSibling;
             }
             removeAllMessagesFromThisToBottom(nextSibling);
-            userSendMessage(message);
+            userSendMessage(message, true);
             newMessageElement.classList.add("hidden");
           });
         chatHistoryElement.appendChild(newMessageElement);
@@ -240,24 +236,27 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatActiveHistory = chatActiveHistory.toSpliced(chatActiveHistory.length - userMessagegDeleted * 2);
     }
 
-    async function userSendMessage(userInput) {
+    async function userSendMessage(userInput, fromSuggestion = false) {
       appendMessageToHistory("user", userInput);
       try {
-        newMessage = await getChatCompletion(chatActiveHistory);
+        newMessage = await getChatCompletion(chatActiveHistory, null, fromSuggestion);
         appendMessageToHistory("assistant", newMessage);
       } catch (error) {
         appendMessageToHistory("assistant", error.message);
       }
     }
 
-    async function getChatCompletion(previousMessages, temperature = 1) {
+    async function getChatCompletion(previousMessages, temperature = 1, fromSuggestion = false) {
       const onlyUserMessages = previousMessages.filter(message => message.role === "user").map(message => message.content).join("\n");
-      let message = await getDataFromDB(onlyUserMessages);
-      if (message)
-        return message;
-      if (previousMessages.length > 5) {
-        // send just the instructions + the last 4 messages (to save tokens)
-        previousMessages = previousMessages.toSpliced(1, previousMessages.length - 5);
+      const parent = previousMessages.slice(0, previousMessages.length - 1).filter(message => message.role === "user").map(message => message.content).join("\n");
+      let record = await getDataFromDB(onlyUserMessages);
+      while (!record && fromSuggestion) 
+        record = await getDataFromDB(onlyUserMessages);
+      if (record)
+        return record.message;
+      if (previousMessages.length > 7) {
+        // send just the instructions + the last 6 messages (to save tokens)
+        previousMessages = previousMessages.toSpliced(1, previousMessages.length - 7);
       }
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -270,13 +269,13 @@ Clarifications, if necessary, are included in the 3 suggestions.
       }
       if (!response.ok) throw new Error("API communication error");
       const { choices } = await response.json();
-      message = choices[0].message.content;
+      let message = choices[0].message.content;
       if (onlyUserMessages !== initialPrompt)
-        setDataInDB(onlyUserMessages, message);
+        setDataInDB(onlyUserMessages, parent, message);
       return message;
     }
 
-    async function operateDB(key, data = null) {
+    async function operateDB(key, parent = null, message = null) {
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open("ChatDB", 1);
         request.onupgradeneeded = e => e.target.result.createObjectStore("chats", { keyPath: "id" });
@@ -286,9 +285,9 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const tx = db.transaction("chats", "readwrite");
       const store = tx.objectStore("chats");
       return new Promise((resolve, reject) => {
-        const request = data ? store.put({ id: key, data: data }) : store.get(key);
+        const request = message ? store.put({ id: key, parent: parent, message: message }) : store.get(key);
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
-        request.onsuccess = e => resolve(data !== null ? e.target.result : e.target.result?.data);
+        request.onsuccess = e => resolve(e.target.result);
       });
     }
 
