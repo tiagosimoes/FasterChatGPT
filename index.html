@@ -139,7 +139,7 @@
         setTimeout(() => document.location.reload(), 1000);
       });
     } else {
-      getChatCompletion([{ "role": "user", "content": initialPrompt }], temperature = 1.2)
+      getChatCompletion([{ "role": "user", "content": initialPrompt }], temperature = 1.5)
         .then(message => {
           message = "What do you want to explore? WHAT NEXT?" + message;
           if (document.readyState === 'loading')
