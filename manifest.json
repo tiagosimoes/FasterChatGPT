@@ -3,6 +3,6 @@
   "short_name": "Never Stop Learning",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#39a1fa",
-  "theme_color": "#39a1fa"
+  "background_color": "hsl(180, 66%, 21%)",
+  "theme_color": "hsl(180, 66%, 21%)"
 }
