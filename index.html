@@ -14,13 +14,15 @@
   <div
     style="background-color: rgb(57, 161, 250); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">
     Never Stop Learning</div>
+    <button type="button" id="resetButton" onclick="document.location.reload(true)"
+    style="width:22px;height: 42px;border-radius: 10px;padding:0;color: rgb(57, 161, 250);background-color:#ffffffee; position: absolute; margin: 5px;opacity: 0; transition: all .3s;">&#8635;</button>
   <div id="chatHistory" style="margin: auto;margin-bottom: 90px;"><div class="thinking"><p>...</p></div></div>
   <form id="chatForm"
     style="position: fixed;display: block;width: 100%;bottom: 0;padding: 10px;background-color: #fff;">
     <input id="userInput" type="text" placeholder="...or anything else (related or not)"
-      style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border: 1px solid #ccc;border-radius: 10px;"></input>
+      style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border: 1px solid #ccc;border-radius: 10px;height:42px"></input>
     <button type="submit" id="sendButton"
-      style="width:40px;height: 40px;border-radius: 10px;padding:0;background-color: rgb(57, 161, 250);color:#ffffffee;">&#10140;</button>
+      style="width:42px;height: 42px;border-radius: 10px;padding:0;background-color: rgb(57, 161, 250);color:#ffffffee;">&#10140;</button>
   </form>
   <style>
     body {
@@ -55,6 +57,7 @@
       color: #ffffffee;
       margin-left: 20px;
       transform-origin: top left;
+      border-bottom-left-radius: 0px;
     }
 
     .assistant,
@@ -64,6 +67,7 @@
       color: #000000dd;
       margin-right: 20px;
       transform-origin: top right;
+      border-bottom-right-radius: 0px;
     }
 
     .suggestion {
@@ -75,7 +79,6 @@
     }
 
     .suggestion.hidden {
-      background-color: rgb(57, 161, 250, 50%);
       margin-top: 0;
       margin-bottom: 0;
       font-size: 0;
@@ -111,6 +114,7 @@
           document.addEventListener("DOMContentLoaded", () => appendMessage("assistant", message));
         else
           appendMessage("assistant", message);
+        document.getElementById('resetButton').style.opacity = 1;
       });
 
     const instructions = `
