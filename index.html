@@ -148,8 +148,6 @@
             appendMessageToHistory("assistant", message);
           getById('resetButton').style.opacity = 1;
         });
-
-
       getById('chatForm').addEventListener('submit', function (event) {
         event.preventDefault(); // Prevent the default form submission
         const userInput = getById('userInput').value;
