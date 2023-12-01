@@ -121,7 +121,6 @@
       }
     }
   </style>
-
   <script>
     const getById = (id) => document.getElementById(id);
     const getDataFromDB = async (key) => await operateDB(key);
@@ -129,7 +128,7 @@
     const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
-    if (!openai_key){
+    if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => {
         appendMessageToHistory("assistant", "Please provide a valid OpenAI API key");
       });
