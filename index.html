@@ -23,15 +23,16 @@
   </div>
   <form id="chatForm"
     style="background-color: var(--background-color);position: fixed;display: block;width: 100%;bottom: 0;padding: 10px;"">
-    <input id="userInput" type="text" placeholder="...or anything else (related or not)"
-      style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border: 1px solid #ccc;border-radius: 10px;height:42px"></input>
+    <input id=" userInput" type="text" placeholder="...or anything else (related or not)"
+    style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border: 1px solid #ccc;border-radius: 10px;height:42px">
+    </input>
     <button type="submit" id="sendButton"
       style="width:42px;height: 42px;border-radius: 10px;padding:0;background-color: var(--primary-color);color:#ffffffee;border: 0;">&#10140;</button>
   </form>
   <style>
     :root {
       --primary-color: hsl(180, 66%, 21%);
-      --secondary-color:hsl(180, 70%, 20%);
+      --secondary-color: hsl(180, 70%, 20%);
       --visited-color: hsl(180, 7%, 41%);
       --background-color: hsl(180, 66%, 98%);
     }
@@ -123,7 +124,7 @@
 
   <script>
     const getById = (id) => document.getElementById(id);
-    const getDataFromDB = async (key)  => await operateDB(key);
+    const getDataFromDB = async (key) => await operateDB(key);
     const setDataInDB = async (key, data) => await operateDB(key, data);
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
@@ -166,7 +167,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
         [message, rawSuggestions] = message.split("WHAT NEXT?");
         // Regular expression to match the leading numbers and period
         const numberAndDot = /^\d+\.\s+/;
-        const suggestions = !rawSuggestions? []: rawSuggestions.split("\n").map(s => s.replace(numberAndDot, '').trim()).filter(s => s != "");
+        const suggestions = !rawSuggestions ? [] : rawSuggestions.split("\n").map(s => s.replace(numberAndDot, '').trim()).filter(s => s != "");
         message = message.trim();
         apendBubble(role, message);
         suggestions.forEach(suggestion => {
@@ -267,7 +268,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const tx = db.transaction("chats", "readwrite");
       const store = tx.objectStore("chats");
       return new Promise((resolve, reject) => {
-        const request = data ? store.put({ id: key, data: data }) : store.get(key); 
+        const request = data ? store.put({ id: key, data: data }) : store.get(key);
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
         request.onsuccess = e => resolve(data !== null ? e.target.result : e.target.result?.data);
       });
