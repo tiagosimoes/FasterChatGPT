@@ -131,13 +131,13 @@
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
     if (!openai_key){
       document.addEventListener("DOMContentLoaded", () => {
-        appendMessageToHistory("assistant", "Please provide a valid OPEN AI API key");
+        appendMessageToHistory("assistant", "Please provide a valid OpenAI API key");
       });
       getById('chatForm').addEventListener('submit', function (event) {
         event.preventDefault(); // Prevent the default form submission
         const userInput = getById('userInput').value;
         localStorage.setItem('openai_key', userInput);
-        document.location.reload();
+        setTimeout(() => document.location.reload(), 1000);
       });
     } else {
       getChatCompletion([{ "role": "user", "content": initialPrompt }], temperature = 1.2)
