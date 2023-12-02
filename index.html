@@ -164,7 +164,8 @@
     }
 
     userInputElem.addEventListener('input', updateInputButtonText);
-    window.addEventListener('scroll', () => sendButtonElem.disabled = (window.pageYOffset <= 50););
+    window.addEventListener('scroll', () => sendButtonElem.disabled = (window.pageYOffset <= 50));
+
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
 You should always make educated guesses. 
