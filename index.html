@@ -127,7 +127,7 @@
     const sendButtonElem = getById('sendButton');
     const chatFormElem = getById('chatForm');
     const getDataFromDB = async key => await operateDB(key);
-    const setDataInDB = async (key, parent, message) => await operateDB(key, parent, message);
+    const setDataInDB = async object => await operateDB(object);
     const updateInputButtonText = () => sendButtonElem.innerText = (userInputElem.value === "") ? '⤒' : '→';
 
     const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
@@ -250,10 +250,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     async function getChatCompletion(previousMessages, temperature = 1, fromSuggestion = false) {
-      const onlyUserMessages = previousMessages.filter(message => message.role === "user").map(message => message.content).join("\n");
-      let record = await getDataFromDB(onlyUserMessages);
+      const allPreviousUserMessages = previousMessages.filter(message => message.role === "user").map(message => message.content).join("\n");
+      let record = await getDataFromDB(allPreviousUserMessages);
       while (!record && fromSuggestion)
-        record = await getDataFromDB(onlyUserMessages);
+        record = await getDataFromDB(allPreviousUserMessages);
       if (record)
         return record.message;
       if (previousMessages.length > 7) {
@@ -272,22 +272,23 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (!response.ok) return "Error: " + response.text;
       const { choices } = await response.json();
       let message = choices[0].message.content;
-      if (onlyUserMessages !== initialPrompt)
-        setDataInDB(onlyUserMessages, message);
+      if (allPreviousUserMessages !== initialPrompt)
+        await setDataInDB({ key: allPreviousUserMessages, message: message });
       return message;
     }
 
-    async function operateDB(key, message = null) {
+    async function operateDB(keyOrObject) {
+      const tableName = "messagesV1";
       const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("ChatDB", 3);
-        request.onupgradeneeded = e => e.target.result.createObjectStore("messages", { keyPath: "id" });
+        const request = indexedDB.open("ChatDB", 4);
+        request.onupgradeneeded = e => e.target.result.createObjectStore(tableName, { keyPath: "key" });
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
-      const tx = db.transaction("messages", "readwrite");
-      const store = tx.objectStore("messages");
+      const tx = db.transaction(tableName, "readwrite");
+      const store = tx.objectStore(tableName);
       return new Promise((resolve, reject) => {
-        const request = message ? store.put({ id: key, message: message }) : store.get(key);
+        const request = typeof keyOrObject === "object" ? store.put(keyOrObject) : store.get(keyOrObject);
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
