@@ -134,7 +134,8 @@
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", "Please provide a valid OpenAI API key"));
+      document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", "Please enter a valid OpenAI API key"));
+      userInputElem.placeholder = "OpenAI API key";
       chatFormElem.addEventListener('submit', function (event) {
         event.preventDefault();
         localStorage.setItem('openai_key', userInputElem.value);
