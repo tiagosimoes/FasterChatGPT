@@ -15,7 +15,7 @@
     style="background-color: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">
     Never Stop Learning</div>
   <button type="button" id="resetButton" onclick="document.location.reload()"
-    style="color:#ffffffee;width:22px;height: 42px;right: 10px;top: 7px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
+    style="color:#ffffffee;width:22px;height: 42px;right: 10px;top: 5px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
   <div id="chatHistory" style="margin: auto;margin-bottom: 90px;">
     <div class="thinking">
       <p>...</p>
@@ -52,7 +52,7 @@
     }
     
     #sendButton:disabled {
-      color: var(--secondary-color);
+      color: #999;
       background-color: rgb(240, 240, 240);
     }
 
@@ -69,7 +69,7 @@
     .assistant,
     .thinking,
     .suggestion {
-      border-radius: 10px;
+      border-radius: 15px;
       padding: 10px;
       margin: 10px auto;
       width: fit-content;
@@ -121,9 +121,10 @@
       color: var(--visited-color);
     }
 
-    .thinking>p {
+    .thinking > p {
       animation: grow .5s infinite alternate;
     }
+
     @keyframes appear {
       from {
         opacity: 0;
@@ -135,12 +136,13 @@
     }
   </style>
   <script>
+    const historySeparator = "\n";
     const getById = id => document.getElementById(id);
     const userInputElem = getById('userInput');
     const sendButtonElem = getById('sendButton');
     const chatFormElem = getById('chatForm');
-    const getDataFromDB = async key => await operateDB(key);
-    const setDataInDB = async object => await operateDB(object);
+    const getDataFromDB = async key => await putOrGetInIndexDB(key);
+    const setDataInDB = async object => await putOrGetInIndexDB(object);
     const updateInputButtonText = () => sendButtonElem.innerText = (userInputElem.value === "") ? '⤒' : '→';
 
     const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
@@ -178,7 +180,7 @@
     }
 
     userInputElem.addEventListener('input', updateInputButtonText);
-    window.addEventListener('scroll', () => sendButtonElem.disabled = (window.scrollY <= 50));
+    window.addEventListener('scroll', () => sendButtonElem.disabled = (window.scrollY <= 100));
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
@@ -265,12 +267,15 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     async function getChatCompletion(previousMessages, temperature = 1, fromSuggestion = false) {
-      const allPreviousUserMessages = previousMessages.filter(message => message.role === "user").map(message => message.content).join("\n");
+      const allPreviousUserMessages = previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
       let record = await getDataFromDB(allPreviousUserMessages);
       while (!record && fromSuggestion)
         record = await getDataFromDB(allPreviousUserMessages);
-      if (record)
+      if (record){
+        //children = await getDirectChildObjectsWithPrefix(allPreviousUserMessages);
+        //console.log(children);
         return record.message;
+      }
       if (previousMessages.length > 7) {
         // send just the instructions + the last 6 messages (to save tokens)
         previousMessages = previousMessages.toSpliced(1, previousMessages.length - 7);
@@ -292,22 +297,49 @@ Clarifications, if necessary, are included in the 3 suggestions.
       return message;
     }
 
-    async function operateDB(keyOrObject) {
+    async function getIndexDBStore() {
       const tableName = "messagesV1";
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open("ChatDB", 4);
-        request.onupgradeneeded = e => e.target.result.createObjectStore(tableName, { keyPath: "key" });
+        request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV1", { keyPath: "key" });
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
       const tx = db.transaction(tableName, "readwrite");
       const store = tx.objectStore(tableName);
+      return store;
+    }
+
+    async function putOrGetInIndexDB(keyOrObject) {
+      const store = await getIndexDBStore();
       return new Promise((resolve, reject) => {
         const request = typeof keyOrObject === "object" ? store.put(keyOrObject) : store.get(keyOrObject);
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
     }
+    
+    const escapeRegex = (string) => string.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
+
+    async function getDirectChildObjectsWithPrefix(prefix) {
+      const store = await getIndexDBStore()
+      const keyRange = IDBKeyRange.bound(prefix, prefix + '\uffff');
+      const request = store.openCursor(keyRange);
+      const results = [];
+      const regex = new RegExp(`^${escapeRegex(prefix + historySeparator)}`);
+      return new Promise((resolve, reject) => {
+          request.onsuccess = e => {
+              const cursor = e.target.result;
+              if (cursor) {
+                  if (regex.test(cursor.key)) 
+                      results.push(cursor.value);
+                  cursor.continue();
+              } else 
+                  resolve(results);
+          };
+          request.onerror = e => reject('Error in fetching data: ' + e.target.errorCode);
+      });
+  }
 
   </script>
 </body>
