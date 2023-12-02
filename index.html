@@ -123,18 +123,21 @@
   </style>
   <script>
     const getById = id => document.getElementById(id);
+    const userInputElem = getById('userInput');
+    const sendButtonElem = getById('sendButton');
+    const chatFormElem = getById('chatForm');
     const getDataFromDB = async key => await operateDB(key);
     const setDataInDB = async (key, parent, message) => await operateDB(key, parent, message);
-    const updateInputButtonText = () => getById('sendButton').innerText = (getById('userInput').value === "") ? '⤒':'→';
+    const updateInputButtonText = () => sendButtonElem.innerText = (userInputElem.value === "") ? '⤒' : '→';
 
     const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", "Please provide a valid OpenAI API key"));
-      getById('chatForm').addEventListener('submit', function (event) {
-        event.preventDefault(); 
-        localStorage.setItem('openai_key', getById('userInput').value);
+      chatFormElem.addEventListener('submit', function (event) {
+        event.preventDefault();
+        localStorage.setItem('openai_key', userInputElem.value);
         setTimeout(() => document.location.reload(), 1000);
       });
     } else {
@@ -147,20 +150,20 @@
             appendMessageToHistory("assistant", message);
           getById('resetButton').style.opacity = 1;
         });
-      getById('chatForm').addEventListener('submit', function (event) {
+      chatFormElem.addEventListener('submit', function (event) {
         event.preventDefault();
-        const userInput = getById('userInput').value;
+        const userInput = userInputElem.value;
         if (userInput === '') {
-          window.scrollTo({top: 0, behavior: 'smooth'});
+          window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         }
         userSendMessage(userInput);
-        getById('userInput').value = '';
+        userInputElem.value = '';
         updateInputButtonText();
       });
     }
 
-    getById('userInput').addEventListener('input', updateInputButtonText);
+    userInputElem.addEventListener('input', updateInputButtonText);
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
@@ -248,9 +251,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     async function getChatCompletion(previousMessages, temperature = 1, fromSuggestion = false) {
       const onlyUserMessages = previousMessages.filter(message => message.role === "user").map(message => message.content).join("\n");
-      const parent = previousMessages.slice(0, previousMessages.length - 1).filter(message => message.role === "user").map(message => message.content).join("\n");
       let record = await getDataFromDB(onlyUserMessages);
-      while (!record && fromSuggestion) 
+      while (!record && fromSuggestion)
         record = await getDataFromDB(onlyUserMessages);
       if (record)
         return record.message;
@@ -267,25 +269,25 @@ Clarifications, if necessary, are included in the 3 suggestions.
         localStorage.removeItem('openai_key');
         document.location.reload();
       }
-      if (!response.ok) throw new Error("API communication error");
+      if (!response.ok) return "Error: " + response.text;
       const { choices } = await response.json();
       let message = choices[0].message.content;
       if (onlyUserMessages !== initialPrompt)
-        setDataInDB(onlyUserMessages, parent, message);
+        setDataInDB(onlyUserMessages, message);
       return message;
     }
 
-    async function operateDB(key, parent = null, message = null) {
+    async function operateDB(key, message = null) {
       const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("ChatDB", 1);
-        request.onupgradeneeded = e => e.target.result.createObjectStore("chats", { keyPath: "id" });
+        const request = indexedDB.open("ChatDB", 3);
+        request.onupgradeneeded = e => e.target.result.createObjectStore("messages", { keyPath: "id" });
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
-      const tx = db.transaction("chats", "readwrite");
-      const store = tx.objectStore("chats");
+      const tx = db.transaction("messages", "readwrite");
+      const store = tx.objectStore("messages");
       return new Promise((resolve, reject) => {
-        const request = message ? store.put({ id: key, parent: parent, message: message }) : store.get(key);
+        const request = message ? store.put({ id: key, message: message }) : store.get(key);
         request.onerror = e => reject('IndexedDB error: ' + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
