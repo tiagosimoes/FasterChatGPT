@@ -26,7 +26,7 @@
     <input id="userInput" type="text" placeholder="...or anything else (related or not)"
     style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border: 1px solid #ccc;border-radius: 10px;height:42px">
     </input>
-    <button type="submit" id="sendButton"  disabled="true">⤒</button>
+    <button type="submit" id="sendButton" disabled="true">⤒</button>
   </form>
   <style>
     :root {
@@ -40,17 +40,17 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
       font-size: large;
     }
-    
+
     #sendButton {
-      width:42px;
+      width: 42px;
       height: 42px;
       border-radius: 10px;
-      padding:0;
+      padding: 0;
       background-color: var(--primary-color);
-      color:#ffffffee;
+      color: #ffffffee;
       border: 0;
     }
-    
+
     #sendButton:disabled {
       color: #999;
       background-color: rgb(240, 240, 240);
@@ -121,7 +121,7 @@
       color: var(--visited-color);
     }
 
-    .thinking > p {
+    .thinking>p {
       animation: grow .5s infinite alternate;
     }
 
@@ -143,21 +143,18 @@
     const chatFormElem = getById('chatForm');
     const getDataFromDB = async key => await putOrGetInIndexDB(key);
     const setDataInDB = async object => await putOrGetInIndexDB(object);
-    const updateInputButtonText = () => sendButtonElem.innerText = (userInputElem.value === "") ? '⤒' : '→';
-
-    const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
+    const updateInputButtonDisabled = () => sendButtonElem.disabled = (window.scrollY <= 60 && userInputElem.value === "");
+    userInputElem.addEventListener('input', updateInputButtonText);
+    chatFormElem.addEventListener('submit', onSubmit);
+    window.addEventListener('scroll', updateInputButtonDisabled);
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", "Please enter a valid OpenAI API key"));
       userInputElem.placeholder = "OpenAI API key";
-      chatFormElem.addEventListener('submit', function (event) {
-        event.preventDefault();
-        localStorage.setItem('openai_key', userInputElem.value);
-        setTimeout(() => document.location.reload(), 1000);
-      });
     } else {
-      getChatCompletion([{ "role": "user", "content": initialPrompt }], temperature = 1.5)
+      const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
+      getChatCompletionFromAI([{ "role": "user", "content": initialPrompt }], temperature = 1.5)
         .then(message => {
           message = "What do you want to explore? WHAT NEXT?" + message;
           if (document.readyState === 'loading')
@@ -166,21 +163,29 @@
             appendMessageToHistory("assistant", message);
           getById('resetButton').style.opacity = 1;
         });
-      chatFormElem.addEventListener('submit', function (event) {
-        event.preventDefault();
-        const userInput = userInputElem.value;
-        if (userInput === '') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          return;
-        }
-        userSendMessage(userInput);
-        userInputElem.value = '';
-        updateInputButtonText();
-      });
     }
 
-    userInputElem.addEventListener('input', updateInputButtonText);
-    window.addEventListener('scroll', () => sendButtonElem.disabled = (window.scrollY <= 100));
+    function onSubmit(event) {
+      event.preventDefault();
+      const userInput = userInputElem.value;
+      if (userInput === '') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (!openai_key) {
+        localStorage.setItem('openai_key', userInput);
+        setTimeout(() => document.location.reload(), 1000);
+        return;
+      }
+      userSendMessage(userInput);
+      userInputElem.value = '';
+      updateInputButtonText();
+    }
+
+    function updateInputButtonText() {
+      sendButtonElem.innerText = userInputElem.value === '' ? '⤒' : '→';
+      updateInputButtonDisabled();
+    }
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
@@ -204,7 +209,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
         suggestions.forEach(suggestion => {
           apendBubble("suggestion", suggestion);
           possibleNewChatHistory = [...chatActiveHistory].concat([{ "role": "user", "content": suggestion }]);
-          getChatCompletion(possibleNewChatHistory);
+          getChatCompletionFromCacheOrAI(possibleNewChatHistory);
         });
       } else { // user
         apendBubble(role, message);
@@ -256,26 +261,32 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatActiveHistory = chatActiveHistory.toSpliced(chatActiveHistory.length - userMessagegDeleted * 2);
     }
 
-    async function userSendMessage(userInput, fromSuggestion = false) {
+    async function userSendMessage(userInput, waitForCache = false) {
       appendMessageToHistory("user", userInput);
       try {
-        newMessage = await getChatCompletion(chatActiveHistory, null, fromSuggestion);
+        newMessage = await getChatCompletionFromCacheOrAI(chatActiveHistory, waitForCache);
         appendMessageToHistory("assistant", newMessage);
       } catch (error) {
         appendMessageToHistory("assistant", error.message);
       }
     }
 
-    async function getChatCompletion(previousMessages, temperature = 1, fromSuggestion = false) {
+    async function getChatCompletionFromCacheOrAI(previousMessages, waitForCache = false) {
       const allPreviousUserMessages = previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
       let record = await getDataFromDB(allPreviousUserMessages);
-      while (!record && fromSuggestion)
+      while (!record && waitForCache)
         record = await getDataFromDB(allPreviousUserMessages);
-      if (record){
+      if (record) {
         //children = await getDirectChildObjectsWithPrefix(allPreviousUserMessages);
         //console.log(children);
         return record.message;
       }
+      const message = await getChatCompletionFromAI(previousMessages, 1);
+      await setDataInDB({ key: allPreviousUserMessages, message: message });
+      return message;
+    }
+
+    async function getChatCompletionFromAI(previousMessages, temperature) {
       if (previousMessages.length > 7) {
         // send just the instructions + the last 6 messages (to save tokens)
         previousMessages = previousMessages.toSpliced(1, previousMessages.length - 7);
@@ -291,10 +302,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       }
       if (!response.ok) return "Error: " + response.text;
       const { choices } = await response.json();
-      let message = choices[0].message.content;
-      if (allPreviousUserMessages !== initialPrompt)
-        await setDataInDB({ key: allPreviousUserMessages, message: message });
-      return message;
+      return choices[0].message.content;
     }
 
     async function getIndexDBStore() {
@@ -318,28 +326,27 @@ Clarifications, if necessary, are included in the 3 suggestions.
         request.onsuccess = e => resolve(e.target.result);
       });
     }
-    
-    const escapeRegex = (string) => string.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
 
     async function getDirectChildObjectsWithPrefix(prefix) {
       const store = await getIndexDBStore()
       const keyRange = IDBKeyRange.bound(prefix, prefix + '\uffff');
       const request = store.openCursor(keyRange);
       const results = [];
+      const escapeRegex = (string) => string.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
       const regex = new RegExp(`^${escapeRegex(prefix + historySeparator)}`);
       return new Promise((resolve, reject) => {
-          request.onsuccess = e => {
-              const cursor = e.target.result;
-              if (cursor) {
-                  if (regex.test(cursor.key)) 
-                      results.push(cursor.value);
-                  cursor.continue();
-              } else 
-                  resolve(results);
-          };
-          request.onerror = e => reject('Error in fetching data: ' + e.target.errorCode);
+        request.onsuccess = e => {
+          const cursor = e.target.result;
+          if (cursor) {
+            if (regex.test(cursor.key))
+              results.push(cursor.value);
+            cursor.continue();
+          } else
+            resolve(results);
+        };
+        request.onerror = e => reject('Error in fetching data: ' + e.target.errorCode);
       });
-  }
+    }
 
   </script>
 </body>
