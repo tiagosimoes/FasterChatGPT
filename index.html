@@ -173,11 +173,13 @@
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results.  <br><br>Please enter a valid OpenAI API key."));
       userInputElem.placeholder = "OpenAI API key";
+      chatFormElem.removeEventListener("submit", onSubmit);
       chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
     } else
       document.addEventListener("DOMContentLoaded", getInitialSuggestions);
 
-    function onOpenAIKeySubmit() {
+    function onOpenAIKeySubmit(event) {
+      event.preventDefault();
       localStorage.setItem("openai_key", userInputElem.value);
       setTimeout(() => document.location.reload(), 1000);
     }
