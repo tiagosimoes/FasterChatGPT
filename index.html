@@ -149,13 +149,18 @@
 
     const getDataFromDB = key => putOrGetInIndexDB(key);
     const setDataInDB = object => putOrGetInIndexDB(object);
-    const updateInputButtonDisabled = () => sendButtonElem.disabled = (window.scrollY <= 60 && userInputElem.value === "");
-    const isScrollToTopRequested = () => sendButtonElem.innerText === "⤒";
+    const updateInputButtonDisabled = () => sendButtonElem.disabled = ((isScrollToTopState() && window.scrollY <= 60) || (!isScrollToTopState() && userInputElem.value === ""));
+    const isScrollToTopState = () => sendButtonElem.innerText === "⤒";
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
     userInputElem.addEventListener("input", updateInputButtonText);
+    userInputElem.addEventListener("focus", updateInputButtonText);
+    userInputElem.addEventListener("blur", updateInputButtonText);
+    archiveButtnElem.addEventListener("click", showArchive);
+
     chatFormElem.addEventListener("submit", onSubmit);
     window.addEventListener("scroll", updateInputButtonDisabled);
+
     const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Please enter a valid OpenAI API key"));
@@ -180,14 +185,16 @@
       getById("resetButton").style.opacity = 1;
     }
 
-    archiveButtnElem.addEventListener("click", async () => {
+
+    function showArchive() {
       const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
       chatActiveHistory = [{ role: "system", content: instructions }];
       chatHistoryElem.innerHTML = "";
       appendBubble("user", "What I've explored so far:");
+      visitedInitialOptions.reverse();
       visitedInitialOptions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
       archiveButtnElem.style.opacity = 0;
-    });
+    }
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
@@ -199,7 +206,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     function onSubmit(event) {
       event.preventDefault();
-      if (isScrollToTopRequested())
+      if (isScrollToTopState())
         scrollToTop();
       else {
         appendSuggestionBubbleAndGetFromAI(userInputElem.value, true);
@@ -209,7 +216,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     function updateInputButtonText() {
-      sendButtonElem.innerText = userInputElem.value === "" ? "⤒" : "→";
+      sendButtonElem.innerText = userInputElem.value === "" && document.activeElement != userInputElem ? "⤒" : "→";
       updateInputButtonDisabled();
     }
 
