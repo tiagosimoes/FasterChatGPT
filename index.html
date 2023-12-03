@@ -157,9 +157,7 @@
     userInputElem.addEventListener("focus", updateInputButtonText);
     userInputElem.addEventListener("blur", updateInputButtonText);
     archiveButtonElem.addEventListener("click", showArchive);
-    chatFormElem.addEventListener("click", () => "" /* event handler just to hide the keyboard on mobile */);
-
-
+    chatHistoryElem.addEventListener("click", () => userInputElem.blur() /*  hide the keyboard on mobile */);
     chatFormElem.addEventListener("submit", onSubmit);
     window.addEventListener("scroll", updateInputButtonDisabled);
 
