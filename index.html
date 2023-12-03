@@ -152,19 +152,17 @@
 
     var openai_key = location.hash.slice(1) || localStorage.getItem('openai_key');
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", "Please enter a valid OpenAI API key"));
+      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Please enter a valid OpenAI API key"));
       userInputElem.placeholder = "OpenAI API key";
-    } else {
+    } else
+      document.addEventListener("DOMContentLoaded", () => getInitialSuggestions());
+
+    async function getInitialSuggestions() {
       const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
-      getChatCompletionFromAI([{ "role": "user", "content": initialPrompt }], temperature = 1.5)
-        .then(message => {
-          message = "What do you want to explore? WHAT NEXT?" + message;
-          if (document.readyState === 'loading')
-            document.addEventListener("DOMContentLoaded", () => appendMessageToHistory("assistant", message));
-          else
-            appendMessageToHistory("assistant", message);
-          getById('resetButton').style.opacity = 1;
-        });
+      const initialSuggestions = await getChatCompletionFromAI([{ "role": "user", "content": initialPrompt }], temperature = 1.5);
+      const message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
+      appendAssistantMessage(message);
+      getById('resetButton').style.opacity = 1;
     }
 
     function onSubmit(event) {
@@ -179,7 +177,7 @@
         setTimeout(() => document.location.reload(), 1000);
         return;
       }
-      userSendMessage(userInput);
+      userSendMessage(userInput, false);
       userInputElem.value = '';
       updateInputButtonText();
     }
@@ -197,60 +195,64 @@ Clarifications, if necessary, are included in the 3 suggestions.
 `;
     let chatActiveHistory = [{ "role": "system", "content": instructions }];
 
-    function appendMessageToHistory(role, message) {
-      chatActiveHistory.push({ role, content: message });
-      if (role === "assistant") {
-        chatHistoryElem.lastElementChild?.remove(); // remove the thinking message
-        [message, rawSuggestions] = message.split("WHAT NEXT?");
-        // Regular expression to match the leading numbers and period
-        const numberAndDot = /^\d+\.\s+/;
-        const suggestions = !rawSuggestions ? [] : rawSuggestions.split("\n").map(s => s.replace(numberAndDot, '').trim()).filter(s => s != "");
-        message = message.trim();
-        appendBubble(role, message);
-        suggestions.forEach(suggestion => {
-          appendBubble("suggestion", suggestion);
-          possibleNewChatHistory = [...chatActiveHistory].concat([{ "role": "user", "content": suggestion }]);
-          getChatCompletionFromCacheOrAI(possibleNewChatHistory);
-        });
-      } else { // user
-        appendBubble(role, message);
-        appendBubble("thinking", "...");
-      }
-
-      function appendBubble(role, message) {
-        const newMessageElement = document.createElement('div');
-        newMessageElement.classList.add(role);
-        newMessageElement.innerHTML = marked.parse(message, { "breaks": true }).trim();
-        if (role === "suggestion")
-          newMessageElement.addEventListener('click', () => {
-            previousSibling = newMessageElement.previousSibling;
-            while (previousSibling && previousSibling.classList.contains("suggestion")) {
-              convertHiddenSuggestionToVisited(previousSibling);
-              previousSibling = previousSibling.previousSibling
-            }
-            nextSibling = newMessageElement.nextSibling;
-            while (nextSibling && nextSibling?.classList.contains("suggestion")) {
-              convertHiddenSuggestionToVisited(nextSibling);
-              nextSibling = nextSibling.nextSibling;
-            }
-            removeAllMessagesFromThisToBottom(nextSibling);
-            userSendMessage(message, true);
-            newMessageElement.classList.add("hidden");
-          });
-        chatHistoryElem.appendChild(newMessageElement);
-        if (role !== "suggestion")
-          newMessageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+    function appendAssistantMessage(message) {
+      chatActiveHistory.push({ role: "assistant", content: message });
+      chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
+      const [messagePart, suggestions] = parseMessageAndSuggestions(message);
+      appendBubble("assistant", messagePart).scrollIntoView({ behavior: 'smooth' });
+      suggestions.forEach(suggestion => {
+        appendSuggestionBubble(suggestion);
+        possibleNewChatHistory = [...chatActiveHistory].concat([{ "role": "user", "content": suggestion }]);
+        getChatCompletionFromCacheOrAI(possibleNewChatHistory);
+      });
     }
 
-    function convertHiddenSuggestionToVisited(element) {
-      if (element.classList.contains("hidden")) {
-        element.classList.remove("hidden");
-        element.classList.add("visited");
-      }
+    function parseMessageAndSuggestions(message) {
+      const [messagePart, rawSuggestions] = message.split("WHAT NEXT?");
+      // Regular expression to match the leading numbers and period
+      const numberAndDot = /^\d+\.\s+/;
+      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.split("\n").map(s => s.replace(numberAndDot, '').trim()).filter(s => s != "");
+      return [messagePart.trim(), suggestionsPart]
     }
 
-    function removeAllMessagesFromThisToBottom(element) {
+    function appendBubble(role, message) {
+      const newMessageElement = document.createElement('div');
+      newMessageElement.classList.add(role);
+      newMessageElement.innerHTML = marked.parse(message, { "breaks": true }).trim();
+      chatHistoryElem.appendChild(newMessageElement);
+      return newMessageElement;
+    }
+
+    function appendSuggestionBubble(message) {
+      const suggestionBubble = appendBubble("suggestion", message);
+      suggestionBubble.addEventListener('click', () => onSuggestionClick(suggestionBubble, message));
+      return suggestionBubble;
+    }
+
+    function onSuggestionClick(suggestionBubble, message) {
+      showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble);
+      userSendMessage(message, true);
+      suggestionBubble.classList.add("hidden");
+    }
+
+    function showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble) {
+      function showSiblingSuggestions(startBubble, direction) {
+        let sibling = startBubble[direction];
+        while (sibling && sibling.classList.contains("suggestion")) {
+          if (sibling.classList.contains("hidden")) {
+            sibling.classList.remove("hidden");
+            sibling.classList.add("visited");
+          }
+          sibling = sibling[direction];
+        }
+        return sibling;
+      }
+      showSiblingSuggestions(suggestionBubble, 'previousSibling');
+      let nextSiblingNonSuggestion = showSiblingSuggestions(suggestionBubble, 'nextSibling');
+      removeAllMessagesFromThisToBottom(nextSiblingNonSuggestion);
+    }
+
+    function removeAllMessagesFromThisToBottom(nextSibling) {
       let userMessagegDeleted = 0;
       while (nextSibling) {
         storeNextSibling = nextSibling.nextSibling;
@@ -262,13 +264,17 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatActiveHistory = chatActiveHistory.toSpliced(chatActiveHistory.length - userMessagegDeleted * 2);
     }
 
-    async function userSendMessage(userInput, waitForCache = false) {
-      appendMessageToHistory("user", userInput);
+    async function userSendMessage(userInput, fromSuggestions = false) {
+      chatActiveHistory.push({ role: "user", content: userInput });
+      if (!fromSuggestions)
+        appendSuggestionBubble(userInput).classList.add("hidden");
+      appendBubble("user", userInput);
+      appendBubble("thinking", "...").scrollIntoView({ behavior: 'smooth' });
       try {
-        newMessage = await getChatCompletionFromCacheOrAI(chatActiveHistory, waitForCache);
-        appendMessageToHistory("assistant", newMessage);
+        messageFromAI = await getChatCompletionFromCacheOrAI(chatActiveHistory, fromSuggestions);
+        appendAssistantMessage(messageFromAI);
       } catch (error) {
-        appendMessageToHistory("assistant", error.message);
+        appendAssistantMessage(error.message);
       }
     }
 
