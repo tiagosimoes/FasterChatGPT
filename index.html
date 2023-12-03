@@ -3,6 +3,10 @@
 
 <head>
   <title>Faster ChatGPT</title>
+  <meta name="description" content="Type less (or nothing at all) and get faster results.">
+  <meta property="og:title" content="Faster ChatGPT" />
+  <meta property="og:description" content="Type less (or nothing at all) and get faster results." />
+
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -162,8 +166,12 @@
     window.addEventListener("scroll", updateInputButtonDisabled);
 
     const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
+    
+    if (location.hash) // Clear the hash in the URL
+      history.pushState(null, "", location.href.split('#')[0]);  
+    
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Please enter a valid OpenAI API key"));
+      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results.  <br><br>Please enter a valid OpenAI API key."));
       userInputElem.placeholder = "OpenAI API key";
       chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
     } else
