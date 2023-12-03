@@ -141,6 +141,8 @@
     const userInputElem = getById('userInput');
     const sendButtonElem = getById('sendButton');
     const chatFormElem = getById('chatForm');
+    const chatHistoryElem = getById('chatHistory');
+
     const getDataFromDB = async key => await putOrGetInIndexDB(key);
     const setDataInDB = async object => await putOrGetInIndexDB(object);
     const updateInputButtonDisabled = () => sendButtonElem.disabled = (window.scrollY <= 60 && userInputElem.value === "");
@@ -196,27 +198,26 @@ Clarifications, if necessary, are included in the 3 suggestions.
     let chatActiveHistory = [{ "role": "system", "content": instructions }];
 
     function appendMessageToHistory(role, message) {
-      const chatHistoryElement = getById('chatHistory');
       chatActiveHistory.push({ role, content: message });
       if (role === "assistant") {
-        chatHistoryElement.lastElementChild?.remove(); // remove the thinking message
+        chatHistoryElem.lastElementChild?.remove(); // remove the thinking message
         [message, rawSuggestions] = message.split("WHAT NEXT?");
         // Regular expression to match the leading numbers and period
         const numberAndDot = /^\d+\.\s+/;
         const suggestions = !rawSuggestions ? [] : rawSuggestions.split("\n").map(s => s.replace(numberAndDot, '').trim()).filter(s => s != "");
         message = message.trim();
-        apendBubble(role, message);
+        appendBubble(role, message);
         suggestions.forEach(suggestion => {
-          apendBubble("suggestion", suggestion);
+          appendBubble("suggestion", suggestion);
           possibleNewChatHistory = [...chatActiveHistory].concat([{ "role": "user", "content": suggestion }]);
           getChatCompletionFromCacheOrAI(possibleNewChatHistory);
         });
       } else { // user
-        apendBubble(role, message);
-        apendBubble("thinking", "...");
+        appendBubble(role, message);
+        appendBubble("thinking", "...");
       }
 
-      function apendBubble(role, message) {
+      function appendBubble(role, message) {
         const newMessageElement = document.createElement('div');
         newMessageElement.classList.add(role);
         newMessageElement.innerHTML = marked.parse(message, { "breaks": true }).trim();
@@ -236,7 +237,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
             userSendMessage(message, true);
             newMessageElement.classList.add("hidden");
           });
-        chatHistoryElement.appendChild(newMessageElement);
+        chatHistoryElem.appendChild(newMessageElement);
         if (role !== "suggestion")
           newMessageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
