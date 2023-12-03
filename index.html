@@ -14,6 +14,8 @@
   <div onclick="document.location.reload()"
     style="background-color: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">
     Speed Learn Anything</div>
+  <button type="button" id="historyButton"
+    style="color:#ffffffee;width:22px;height: 42px;left: 10px;top: 5px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8634;</button>
   <button type="button" id="resetButton" onclick="document.location.reload()"
     style="color:#ffffffee;width:22px;height: 42px;right: 10px;top: 5px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
   <div id="chatHistory" style="margin: auto;margin-bottom: 90px;">
@@ -142,6 +144,8 @@
     const sendButtonElem = getById("sendButton");
     const chatFormElem = getById("chatForm");
     const chatHistoryElem = getById("chatHistory");
+    const historyButtnElem = getById("historyButton");
+    
 
     const getDataFromDB = key => putOrGetInIndexDB(key);
     const setDataInDB = object => putOrGetInIndexDB(object);
@@ -152,7 +156,6 @@
     userInputElem.addEventListener("input", updateInputButtonText);
     chatFormElem.addEventListener("submit", onSubmit);
     window.addEventListener("scroll", updateInputButtonDisabled);
-
     const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Please enter a valid OpenAI API key"));
@@ -169,10 +172,22 @@
     async function getInitialSuggestions() {
       const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
       const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], 1.5);
-      const message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
+      let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
       appendAssistantMessage(message);
       getById("resetButton").style.opacity = 1;
+      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
+      if (visitedInitialOptions.length > 0)
+        historyButtnElem.style.opacity = 1;
     }
+
+    historyButtnElem.addEventListener("click", async () => {
+      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
+      chatActiveHistory = [{ role: "system", content: instructions }];
+      chatHistoryElem.innerHTML = "";
+      appendBubble("assistant", "What you've explored so far:");
+      visitedInitialOptions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
+      historyButtnElem.style.opacity = 0;
+    });
 
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
@@ -203,8 +218,17 @@ Clarifications, if necessary, are included in the 3 suggestions.
       updateInputButtonText();
     }
 
+    async function storeTopMessageInHistory(message) {
+      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
+      if (!visitedInitialOptions.includes(message))
+        visitedInitialOptions.push(message);
+      localStorage.setItem("visitedInitialOptions", JSON.stringify(visitedInitialOptions));
+      historyButtnElem.style.opacity = 1;
+    }
     async function userSendMessage(userMessage) {
       chatActiveHistory.push({ role: "user", content: userMessage });
+      if(chatActiveHistory.length = 3) 
+        storeTopMessageInHistory(userMessage);
       appendBubble("user", userMessage);
       appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
       await fetchAndDisplayAIResponse();
@@ -215,17 +239,19 @@ Clarifications, if necessary, are included in the 3 suggestions.
         const record = await getChatCompletionFromCache(chatActiveHistory);
         appendAssistantMessage(record.message);
         record.visited = true;
-        record.active = true;
+        //record.active = true;
         await setDataInDB(record);
-        // const otherSiblings = (await getDirectChildObjectsWithPrefix(record.key)).filter(r => r != record);
-        // otherSiblings.forEach(r =>  {
-        //   r.active = false;
-        //   setDataInDB(r);
-        // });
+        //await deactivateOtherSiblings(record);
       } catch (error) {
         appendAssistantMessage(error.message);
       }
     }
+
+    // async function deactivateOtherSiblings(record) {
+    //   const parentKey = record.key.split(historySeparator).slice(0, -1).join(historySeparator);
+    //   const otherSiblings = (await getDirectChildObjectsWithPrefix(parentKey)).filter(r => r.key != record.key);
+    //   otherSiblings.forEach(r => setDataInDB({ ...r, active: false }));;
+    // }
 
     function appendAssistantMessage(message) {
       chatActiveHistory.push({ role: "assistant", content: message });
@@ -254,18 +280,19 @@ Clarifications, if necessary, are included in the 3 suggestions.
     async function appendSuggestionBubbleAndGetFromAI(message) {
       const suggestionBubble = appendBubble("suggestion", message);
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
-      let possibleNewChatHistory = [...chatActiveHistory].concat([{ role: "user", content: message }]);
-      const visited = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
-      if (visited)
+      let possibleNewChatHistory = [...chatActiveHistory];
+      possibleNewChatHistory.push({ role: "user", content: message });
+      const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
+      if (record.visited)
         suggestionBubble.classList.add("visited");
-      return suggestionBubble;
+      //if (record.active && record.key.includes(historySeparator))
+      //  userSendMessage(record.key.split(historySeparator).slice(-1)[0]);
     }
 
     async function onSuggestionClick(suggestionBubble, message) {
       showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble);
       suggestionBubble.classList.add("hidden");
       await userSendMessage(message);
-      reloadHistoryIfAvailable();
     }
 
     function showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble) {
@@ -285,10 +312,6 @@ Clarifications, if necessary, are included in the 3 suggestions.
       removeAllMessagesFromThisToBottom(nextSiblingNonSuggestion);
     }
 
-    function reloadHistoryIfAvailable() {
-      
-    }
-
     function removeAllMessagesFromThisToBottom(nextSibling) {
       let userMessagegDeleted = 0;
       while (nextSibling) {
@@ -298,19 +321,21 @@ Clarifications, if necessary, are included in the 3 suggestions.
         nextSibling.remove();
         nextSibling = storeNextSibling;
       }
-      chatActiveHistory = chatActiveHistory.toSpliced(chatActiveHistory.length - userMessagegDeleted * 2);
+      if (userMessagegDeleted)
+        chatActiveHistory.slice(- userMessagegDeleted * 2);
     }
 
     const getAllPreviousUserMessages = (previousMessages) => previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
 
     async function storeChatCompletionFromAIToCache(previousMessages) {
       const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
-      record = await getDataFromDB(allPreviousUserMessages);
+      let record = await getDataFromDB(allPreviousUserMessages);
       if (record)
-        return record.visited;
+        return record;
       message = await getChatCompletionFromAI(previousMessages, 1);
-      await setDataInDB({ key: allPreviousUserMessages, message: message, visited: false, active: false });
-      return false;
+      record = { key: allPreviousUserMessages, message: message, visited: false};
+      await setDataInDB(record);
+      return record;
     }
 
     async function getChatCompletionFromCache(previousMessages) {
@@ -340,9 +365,9 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     async function getIndexDBStore() {
-      const tableName = "messagesV1";
+      const tableName = "messagesV2";
       const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("ChatDB", 4);
+        const request = indexedDB.open("ChatDB", 5);
         request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV1", { keyPath: "key" });
         request.onerror = e => reject("IndexedDB error: " + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
@@ -367,7 +392,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const request = store.openCursor(keyRange);
       const results = [];
       const escapeRegex = (string) => string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
-      const regex = new RegExp(`^${escapeRegex(prefix + historySeparator)}`);
+      const regex = new RegExp(`^${escapeRegex(prefix + historySeparator)}[^${escapeRegex(historySeparator)}]*$`);
       return new Promise((resolve, reject) => {
         request.onsuccess = e => {
           const cursor = e.target.result;
