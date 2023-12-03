@@ -143,19 +143,28 @@
     const chatFormElem = getById("chatForm");
     const chatHistoryElem = getById("chatHistory");
 
-    const getDataFromDB = async key => await putOrGetInIndexDB(key);
-    const setDataInDB = async object => await putOrGetInIndexDB(object);
+    const getDataFromDB = key => putOrGetInIndexDB(key);
+    const setDataInDB = object => putOrGetInIndexDB(object);
     const updateInputButtonDisabled = () => sendButtonElem.disabled = (window.scrollY <= 60 && userInputElem.value === "");
+    const isScrollToTopRequested = () => sendButtonElem.innerText === "⤒";
+    const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
     userInputElem.addEventListener("input", updateInputButtonText);
     chatFormElem.addEventListener("submit", onSubmit);
     window.addEventListener("scroll", updateInputButtonDisabled);
 
-    var openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
+    const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Please enter a valid OpenAI API key"));
       userInputElem.placeholder = "OpenAI API key";
+      chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
     } else
-      document.addEventListener("DOMContentLoaded", () => getInitialSuggestions());
+      document.addEventListener("DOMContentLoaded", getInitialSuggestions);
+
+    function onOpenAIKeySubmit() {
+      localStorage.setItem("openai_key", userInputElem.value);
+      setTimeout(() => document.location.reload(), 1000);
+    }
 
     async function getInitialSuggestions() {
       const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
@@ -175,24 +184,39 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     function onSubmit(event) {
       event.preventDefault();
-      const userInput = userInputElem.value;
-      if (userInput === "") {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
+      if (isScrollToTopRequested())
+        scrollToTop();
+      else {
+        userSendMessage(userInputElem.value, false);
+        appendSuggestionBubble(userInputElem.value).classList.add("hidden");
+        clearUserInput();
       }
-      if (!openai_key) {
-        localStorage.setItem("openai_key", userInput);
-        setTimeout(() => document.location.reload(), 1000);
-        return;
-      }
-      userSendMessage(userInput, false);
-      userInputElem.value = "";
-      updateInputButtonText();
     }
 
     function updateInputButtonText() {
       sendButtonElem.innerText = userInputElem.value === "" ? "⤒" : "→";
       updateInputButtonDisabled();
+    }
+
+    function clearUserInput() {
+      userInputElem.value = "";
+      updateInputButtonText();
+    }
+
+    async function userSendMessage(userMessage, fromSuggestions = false) {
+      chatActiveHistory.push({ role: "user", content: userMessage });
+      appendBubble("user", userMessage);
+      appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
+      await fetchAndDisplayAIResponse();
+    }
+
+    async function fetchAndDisplayAIResponse() {
+      try {
+        const messageFromAI = await getChatCompletionFromCacheOrAI(chatActiveHistory, false);
+        appendAssistantMessage(messageFromAI);
+      } catch (error) {
+        appendAssistantMessage(error.message);
+      }
     }
 
     function appendAssistantMessage(message) {
@@ -262,20 +286,6 @@ Clarifications, if necessary, are included in the 3 suggestions.
         nextSibling = storeNextSibling;
       }
       chatActiveHistory = chatActiveHistory.toSpliced(chatActiveHistory.length - userMessagegDeleted * 2);
-    }
-
-    async function userSendMessage(userInput, fromSuggestions = false) {
-      chatActiveHistory.push({ role: "user", content: userInput });
-      if (!fromSuggestions)
-        appendSuggestionBubble(userInput).classList.add("hidden");
-      appendBubble("user", userInput);
-      appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
-      try {
-        const messageFromAI = await getChatCompletionFromCacheOrAI(chatActiveHistory, fromSuggestions);
-        appendAssistantMessage(messageFromAI);
-      } catch (error) {
-        appendAssistantMessage(error.message);
-      }
     }
 
     async function getChatCompletionFromCacheOrAI(previousMessages, waitForCache = false) {
