@@ -187,8 +187,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (isScrollToTopRequested())
         scrollToTop();
       else {
-        userSendMessage(userInputElem.value, false);
-        appendSuggestionBubble(userInputElem.value).classList.add("hidden");
+        appendSuggestionBubbleAndGetFromAI(userInputElem.value).classList.add("hidden");
+        userSendMessage(userInputElem.value);
         clearUserInput();
       }
     }
@@ -203,7 +203,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       updateInputButtonText();
     }
 
-    async function userSendMessage(userMessage, fromSuggestions = false) {
+    async function userSendMessage(userMessage) {
       chatActiveHistory.push({ role: "user", content: userMessage });
       appendBubble("user", userMessage);
       appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
@@ -212,7 +212,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     async function fetchAndDisplayAIResponse() {
       try {
-        const messageFromAI = await getChatCompletionFromCacheOrAI(chatActiveHistory, false);
+        const messageFromAI = await getChatCompletionFromCache(chatActiveHistory);
         appendAssistantMessage(messageFromAI);
       } catch (error) {
         appendAssistantMessage(error.message);
@@ -224,11 +224,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
       const [messagePart, suggestions] = parseMessageAndSuggestions(message);
       appendBubble("assistant", messagePart).scrollIntoView({ behavior: "smooth" });
-      suggestions.forEach(suggestion => {
-        appendSuggestionBubble(suggestion);
-        let possibleNewChatHistory = [...chatActiveHistory].concat([{ role: "user", content: suggestion }]);
-        getChatCompletionFromCacheOrAI(possibleNewChatHistory);
-      });
+      suggestions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
     }
 
     function parseMessageAndSuggestions(message) {
@@ -247,15 +243,17 @@ Clarifications, if necessary, are included in the 3 suggestions.
       return newMessageElement;
     }
 
-    function appendSuggestionBubble(message) {
+    function appendSuggestionBubbleAndGetFromAI(message) {
       const suggestionBubble = appendBubble("suggestion", message);
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
+      let possibleNewChatHistory = [...chatActiveHistory].concat([{ role: "user", content: message }]);
+      getChatCompletionFromCacheOrAI(possibleNewChatHistory);
       return suggestionBubble;
     }
 
     function onSuggestionClick(suggestionBubble, message) {
       showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble);
-      userSendMessage(message, true);
+      userSendMessage(message);
       suggestionBubble.classList.add("hidden");
     }
 
@@ -288,19 +286,23 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatActiveHistory = chatActiveHistory.toSpliced(chatActiveHistory.length - userMessagegDeleted * 2);
     }
 
-    async function getChatCompletionFromCacheOrAI(previousMessages, waitForCache = false) {
-      const allPreviousUserMessages = previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
+    const getAllPreviousUserMessages = (previousMessages)  => previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
+
+    async function getChatCompletionFromCacheOrAI(previousMessages) {
+      const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
       let record = await getDataFromDB(allPreviousUserMessages);
-      while (!record && waitForCache)
-        record = await getDataFromDB(allPreviousUserMessages);
-      if (record) {
-        //children = await getDirectChildObjectsWithPrefix(allPreviousUserMessages);
-        //console.log(children);
+      if (record)
         return record.message;
-      }
       const message = await getChatCompletionFromAI(previousMessages, 1);
       await setDataInDB({ key: allPreviousUserMessages, message: message });
       return message;
+    }
+
+    async function getChatCompletionFromCache(previousMessages) {
+      const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
+      let record;
+      while (!record) record = await getDataFromDB(allPreviousUserMessages);
+      return record?.message;
     }
 
     async function getChatCompletionFromAI(previousMessages, temperature) {
