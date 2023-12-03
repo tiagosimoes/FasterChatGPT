@@ -11,7 +11,7 @@
 </head>
 
 <body style="background-color: var(--background-color);">
-  <div onclick="document.location.reload()"
+  <div
     style="background-color: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">
     Speed Learn Anything</div>
   <button type="button" id="historyButton"
@@ -26,7 +26,7 @@
   <form id="chatForm"
     style="background-color: var(--background-color);position: fixed;display: block;width: 100%;bottom: 0;padding: 10px;"">
     <input id="userInput" type="text" placeholder="...or anything else (related or not)"
-    style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border: 1px solid #ccc;border-radius: 10px;height:42px">
+    style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border:1px solid var(--primary-color);border-radius: 10px;height:42px">
     </input>
     <button type="submit" id="sendButton" disabled="true">⤒</button>
   </form>
@@ -127,13 +127,13 @@
       animation: grow .5s infinite alternate;
     }
 
-    @keyframes appear {
+    @keyframes grow {
       from {
-        opacity: 0;
+        transform: scale(0);
       }
 
       to {
-        opacity: 1;
+        transform: scale(1);
       }
     }
   </style>
@@ -170,21 +170,21 @@
     }
 
     async function getInitialSuggestions() {
+      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
+      if (visitedInitialOptions.length > 0)
+        historyButtnElem.style.opacity = 1;      
       const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
       const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], 1.5);
       let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
-      appendAssistantMessage(message);
+      await appendAssistantMessage(message);
       getById("resetButton").style.opacity = 1;
-      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
-      if (visitedInitialOptions.length > 0)
-        historyButtnElem.style.opacity = 1;
     }
 
     historyButtnElem.addEventListener("click", async () => {
       const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
       chatActiveHistory = [{ role: "system", content: instructions }];
       chatHistoryElem.innerHTML = "";
-      appendBubble("assistant", "What you've explored so far:");
+      appendBubble("user", "What I've explored so far:");
       visitedInitialOptions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
       historyButtnElem.style.opacity = 0;
     });
@@ -202,7 +202,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (isScrollToTopRequested())
         scrollToTop();
       else {
-        appendSuggestionBubbleAndGetFromAI(userInputElem.value).classList.add("hidden");
+        appendSuggestionBubbleAndGetFromAI(userInputElem.value, true);
         userSendMessage(userInputElem.value);
         clearUserInput();
       }
@@ -218,17 +218,18 @@ Clarifications, if necessary, are included in the 3 suggestions.
       updateInputButtonText();
     }
 
-    async function storeTopMessageInHistory(message) {
+    function storeTopMessageInHistory(message) {
       const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
       if (!visitedInitialOptions.includes(message))
         visitedInitialOptions.push(message);
       localStorage.setItem("visitedInitialOptions", JSON.stringify(visitedInitialOptions));
       historyButtnElem.style.opacity = 1;
     }
+
     async function userSendMessage(userMessage) {
+      if (document.querySelectorAll(".user").length == 0)
+        storeTopMessageInHistory(userMessage);      
       chatActiveHistory.push({ role: "user", content: userMessage });
-      if(chatActiveHistory.length = 3) 
-        storeTopMessageInHistory(userMessage);
       appendBubble("user", userMessage);
       appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
       await fetchAndDisplayAIResponse();
@@ -237,7 +238,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
     async function fetchAndDisplayAIResponse() {
       try {
         const record = await getChatCompletionFromCache(chatActiveHistory);
-        appendAssistantMessage(record.message);
+        await appendAssistantMessage(record.message);
         record.visited = true;
         //record.active = true;
         await setDataInDB(record);
@@ -253,12 +254,12 @@ Clarifications, if necessary, are included in the 3 suggestions.
     //   otherSiblings.forEach(r => setDataInDB({ ...r, active: false }));;
     // }
 
-    function appendAssistantMessage(message) {
+    async function appendAssistantMessage(message) {
       chatActiveHistory.push({ role: "assistant", content: message });
       chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
       const [messagePart, suggestions] = parseMessageAndSuggestions(message);
       appendBubble("assistant", messagePart).scrollIntoView({ behavior: "smooth" });
-      suggestions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
+      suggestions.forEach(async suggestion => await appendSuggestionBubbleAndGetFromAI(suggestion));
     }
 
     function parseMessageAndSuggestions(message) {
@@ -277,7 +278,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       return newMessageElement;
     }
 
-    async function appendSuggestionBubbleAndGetFromAI(message) {
+    async function appendSuggestionBubbleAndGetFromAI(message, hidden = false) {
       const suggestionBubble = appendBubble("suggestion", message);
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
       let possibleNewChatHistory = [...chatActiveHistory];
@@ -285,6 +286,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
       if (record.visited)
         suggestionBubble.classList.add("visited");
+      if (hidden)
+        suggestionBubble.classList.add("hidden");
       //if (record.active && record.key.includes(historySeparator))
       //  userSendMessage(record.key.split(historySeparator).slice(-1)[0]);
     }
@@ -322,7 +325,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
         nextSibling = storeNextSibling;
       }
       if (userMessagegDeleted)
-        chatActiveHistory.slice(- userMessagegDeleted * 2);
+        chatActiveHistory = chatActiveHistory.toSpliced(- userMessagegDeleted * 2);
     }
 
     const getAllPreviousUserMessages = (previousMessages) => previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
