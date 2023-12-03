@@ -144,7 +144,7 @@
     const sendButtonElem = getById("sendButton");
     const chatFormElem = getById("chatForm");
     const chatHistoryElem = getById("chatHistory");
-    const archiveButtnElem = getById("archiveButton");
+    const archiveButtonElem = getById("archiveButton");
     
 
     const getDataFromDB = key => putOrGetInIndexDB(key);
@@ -156,7 +156,7 @@
     userInputElem.addEventListener("input", updateInputButtonText);
     userInputElem.addEventListener("focus", updateInputButtonText);
     userInputElem.addEventListener("blur", updateInputButtonText);
-    archiveButtnElem.addEventListener("click", showArchive);
+    archiveButtonElem.addEventListener("click", showArchive);
 
     chatFormElem.addEventListener("submit", onSubmit);
     window.addEventListener("scroll", updateInputButtonDisabled);
@@ -177,7 +177,7 @@
     async function getInitialSuggestions() {
       const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
       if (visitedInitialOptions.length > 0)
-        archiveButtnElem.style.opacity = 1;      
+        archiveButtonElem.style.opacity = 1;      
       const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
       const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], 1.5);
       let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
@@ -193,7 +193,7 @@
       appendBubble("user", "What I've explored so far:");
       visitedInitialOptions.reverse();
       visitedInitialOptions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
-      archiveButtnElem.style.opacity = 0;
+      archiveButtonElem.style.opacity = 0;
     }
 
     const instructions = `
@@ -230,7 +230,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (!visitedInitialOptions.includes(message))
         visitedInitialOptions.push(message);
       localStorage.setItem("visitedInitialOptions", JSON.stringify(visitedInitialOptions));
-      archiveButtnElem.style.opacity = 1;
+      archiveButtonElem.style.opacity = 1;
     }
 
     async function userSendMessage(userMessage) {
@@ -247,19 +247,11 @@ Clarifications, if necessary, are included in the 3 suggestions.
         const record = await getChatCompletionFromCache(chatActiveHistory);
         await appendAssistantMessage(record.message);
         record.visited = true;
-        //record.active = true;
         await setDataInDB(record);
-        //await deactivateOtherSiblings(record);
       } catch (error) {
         appendAssistantMessage(error.message);
       }
     }
-
-    // async function deactivateOtherSiblings(record) {
-    //   const parentKey = record.key.split(historySeparator).slice(0, -1).join(historySeparator);
-    //   const otherSiblings = (await getDirectChildObjectsWithPrefix(parentKey)).filter(r => r.key != record.key);
-    //   otherSiblings.forEach(r => setDataInDB({ ...r, active: false }));;
-    // }
 
     async function appendAssistantMessage(message) {
       chatActiveHistory.push({ role: "assistant", content: message });
@@ -271,8 +263,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     function parseMessageAndSuggestions(message) {
       const [messagePart, rawSuggestions] = message.split("WHAT NEXT?");
-      // Regular expression to match the leading numbers and period
-      const numberAndDot = /^\d+\.\s+/;
+      // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc.
+      const numberAndDot = /^\d+[\.\)]\s+/;
       const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.split("\n").map(s => s.replace(numberAndDot, "").trim()).filter(s => s != "");
       return [messagePart.trim(), suggestionsPart];
     }
@@ -295,8 +287,6 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
       if (record.visited)
         suggestionBubble.classList.add("visited");
-      //if (record.active && record.key.includes(historySeparator))
-      //  userSendMessage(record.key.split(historySeparator).slice(-1)[0]);
     }
 
     async function onSuggestionClick(suggestionBubble, message) {
@@ -393,27 +383,6 @@ Clarifications, if necessary, are included in the 3 suggestions.
         const request = typeof keyOrObject === "object" ? store.put(keyOrObject) : store.get(keyOrObject);
         request.onerror = e => reject("IndexedDB error: " + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
-      });
-    }
-
-    async function getDirectChildObjectsWithPrefix(prefix) {
-      const store = await getIndexDBStore();
-      const keyRange = IDBKeyRange.bound(prefix, prefix + "\uffff");
-      const request = store.openCursor(keyRange);
-      const results = [];
-      const escapeRegex = (string) => string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
-      const regex = new RegExp(`^${escapeRegex(prefix + historySeparator)}[^${escapeRegex(historySeparator)}]*$`);
-      return new Promise((resolve, reject) => {
-        request.onsuccess = e => {
-          const cursor = e.target.result;
-          if (cursor) {
-            if (regex.test(cursor.key))
-              results.push(cursor.value);
-            cursor.continue();
-          } else
-            resolve(results);
-        };
-        request.onerror = e => reject("Error in fetching data: " + e.target.errorCode);
       });
     }
 
