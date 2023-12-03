@@ -1,7 +1,7 @@
 {
-  "name": "Never Stop Learning",
-  "short_name": "Never Stop Learning",
-  "start_url": "/",
+  "name": "Faster ChatGPT",
+  "short_name": "Faster ChatGPT",
+  "start_url": "/FasterChatGPT",
   "display": "standalone",
   "background_color": "hsl(180, 66%, 21%)",
   "theme_color": "hsl(180, 66%, 21%)"
