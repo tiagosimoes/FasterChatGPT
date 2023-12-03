@@ -368,7 +368,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const tableName = "messagesV2";
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open("ChatDB", 5);
-        request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV1", { keyPath: "key" });
+        request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV2", { keyPath: "key" });
         request.onerror = e => reject("IndexedDB error: " + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
