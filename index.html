@@ -289,31 +289,31 @@ Clarifications, if necessary, are included in the 3 suggestions.
     const getAllPreviousUserMessages = (previousMessages)  => previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
 
     async function getChatCompletionFromCacheOrAI(previousMessages) {
+      let message = await getChatCompletionFromCache(previousMessages, false);
+      if (message)
+        return message;
       const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
-      let record = await getDataFromDB(allPreviousUserMessages);
-      if (record)
-        return record.message;
-      const message = await getChatCompletionFromAI(previousMessages, 1);
+      message = await getChatCompletionFromAI(previousMessages, 1);
       await setDataInDB({ key: allPreviousUserMessages, message: message });
       return message;
     }
 
-    async function getChatCompletionFromCache(previousMessages) {
+    async function getChatCompletionFromCache(previousMessages, wait = true) {
       const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
       let record;
-      while (!record) record = await getDataFromDB(allPreviousUserMessages);
+      do {
+        record = await getDataFromDB(allPreviousUserMessages);
+      } while (!record && wait);
       return record?.message;
     }
 
     async function getChatCompletionFromAI(previousMessages, temperature) {
-      if (previousMessages.length > 7) {
-        // send just the instructions + the last 6 messages (to save tokens)
-        previousMessages = previousMessages.toSpliced(1, previousMessages.length - 7);
-      }
+      // send just the instructions + the last 6 messages (to save tokens)
+      const previousMessagesTrimmed = (previousMessages.length > 7) ? [previousMessages[0], ...myArray.slice(-6)] : [...previousMessages];
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openai_key },
-        body: JSON.stringify({ model: "gpt-3.5-turbo", messages: previousMessages, temperature: temperature })
+        body: JSON.stringify({ model: "gpt-3.5-turbo", messages: previousMessagesTrimmed, temperature: temperature })
       });
       if (response.status === 401) {
         localStorage.removeItem("openai_key");
