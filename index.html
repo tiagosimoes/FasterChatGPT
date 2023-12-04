@@ -188,8 +188,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
     
-    if (location.hash) // Clear the hash in the URL
-      history.pushState(null, "", location.href.split('#')[0]);  
+    if (location.hash) {
+      history.pushState(null, "", location.href.split('#')[0]);  // Clear the hash in the UR
+      localStorage.setItem("openai_key", openai_key);
+    }
     
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results.  <br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
