@@ -20,7 +20,7 @@
     Faster ChatGPT</div>
   <button type="button" id="archiveButton"
     style="color:#ffffffee;width:22px;height: 42px;left: 10px;top: 5px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8634;</button>
-  <button type="button" id="resetButton"
+  <button type="button" id="refreshButton"
     style="color:#ffffffee;width:22px;height: 42px;right: 10px;top: 5px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
   <div id="chatHistory" style="margin: auto;margin-bottom: 90px;"></div>
   <form id="chatForm"
@@ -62,7 +62,7 @@
       background-color: rgb(240, 240, 240);
     }
 
-    input:focus-visible{
+    input:focus-visible {
       outline: 1px solid var(--primary-color);
     }
 
@@ -167,8 +167,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
     const chatFormElem = getById("chatForm");
     const chatHistoryElem = getById("chatHistory");
     const archiveButtonElem = getById("archiveButton");
-    const resetButtonElem = getById("resetButton");
-    
+    const refreshButtonElem = getById("refreshButton");
+
 
     const getDataFromDB = key => putOrGetInIndexDB(key);
     const setDataInDB = object => putOrGetInIndexDB(object);
@@ -181,18 +181,18 @@ Clarifications, if necessary, are included in the 3 suggestions.
     userInputElem.addEventListener("focus", updateInputButtonText);
     userInputElem.addEventListener("blur", updateInputButtonText);
     archiveButtonElem.addEventListener("click", showArchive);
-    resetButtonElem.addEventListener("click", getInitialSuggestions);
+    refreshButtonElem.addEventListener("click", getInitialSuggestions);
     chatHistoryElem.addEventListener("click", () => userInputElem.blur() /*  hide the keyboard on mobile */);
     chatFormElem.addEventListener("submit", onSubmit);
     window.addEventListener("scroll", updateInputButtonDisabled);
 
     const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
-    
+
     if (location.hash) {
       history.pushState(null, "", location.href.split('#')[0]);  // Clear the hash in the UR
       localStorage.setItem("openai_key", openai_key);
     }
-    
+
     if (!openai_key) {
       document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results.  <br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
       userInputElem.placeholder = "OpenAI API key";
@@ -202,13 +202,15 @@ Clarifications, if necessary, are included in the 3 suggestions.
       // get the "q" query parameter
       const urlParams = new URLSearchParams(window.location.search);
       const q = urlParams.get('q');
-      if (q) {
-        document.addEventListener("DOMContentLoaded", () => {
-          chatActiveHistory = [{ role: "system", content: instructions }];
-          appendSuggestionBubbleAndGetFromAI(q, true);
-          userSendMessage(q);
-          resetButtonElem.style.opacity = 1;
-        });
+      if (q != null) {
+        chatActiveHistory = [{ role: "system", content: instructions }];
+        refreshButtonElem.style.opacity = 1;
+        if (q != "") {
+          document.addEventListener("DOMContentLoaded", () => {
+            appendSuggestionBubbleAndGetFromAI(q, true);
+            userSendMessage(q);
+          });
+        }
       } else
         document.addEventListener("DOMContentLoaded", getInitialSuggestions);
     }
@@ -228,11 +230,11 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (visitedInitialOptions.length > 0)
         archiveButtonElem.style.opacity = 1;
       const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
-      const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], (visitedInitialOptions.length > 0)? 1.5: 1);
+      const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], (visitedInitialOptions.length > 0) ? 1.5 : 1);
       let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
       await appendAssistantMessage(message);
       userInputElem.placeholder = "...or anything else (related or not)";
-      resetButtonElem.style.opacity = 1;
+      refreshButtonElem.style.opacity = 1;
     }
 
     function showArchive() {
@@ -276,7 +278,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     async function userSendMessage(userMessage) {
       if (document.querySelectorAll(".user").length == 0)
-        storeTopMessageInHistory(userMessage);      
+        storeTopMessageInHistory(userMessage);
       chatActiveHistory.push({ role: "user", content: userMessage });
       appendBubble("user", userMessage);
       appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
@@ -307,7 +309,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (!rawSuggestions) {
         // sometimes the assistant doesn't write "WHAT NEXT?" and just gives the suggestions
         const lastOne = Math.max(message.lastIndexOf("1."), message.lastIndexOf("1)"));
-        if (lastOne > 0) 
+        if (lastOne > 0)
           [messagePart, rawSuggestions] = [message.slice(0, lastOne), message.slice(lastOne)];
       }
       // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc.
@@ -327,7 +329,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
     async function appendSuggestionBubbleAndGetFromAI(message, hidden = false) {
       const suggestionBubble = appendBubble("suggestion", message);
       if (hidden)
-        suggestionBubble.classList.add("hidden");      
+        suggestionBubble.classList.add("hidden");
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
       let possibleNewChatHistory = [...chatActiveHistory];
       possibleNewChatHistory.push({ role: "user", content: message });
@@ -380,7 +382,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (record)
         return record;
       message = await getChatCompletionFromAI(previousMessages, 1);
-      record = { key: allPreviousUserMessages, message: message, visited: false};
+      record = { key: allPreviousUserMessages, message: message, visited: false };
       await setDataInDB(record);
       return record;
     }
