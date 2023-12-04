@@ -180,7 +180,7 @@
       history.pushState(null, "", location.href.split('#')[0]);  
     
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results.  <br><br>Please enter a valid OpenAI API key."));
+      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results.  <br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
       userInputElem.placeholder = "OpenAI API key";
       chatFormElem.removeEventListener("submit", onSubmit);
       chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
