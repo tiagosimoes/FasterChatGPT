@@ -226,10 +226,12 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatActiveHistory = [{ role: "system", content: instructions }];
       chatHistoryElem.innerHTML = "";
       appendBubble("thinking", "...");
+      let initialPrompt = "Give me a list of 7 random different topics I could find interesting to explore. Be very succinct. Just output the list.";
       const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
-      if (visitedInitialOptions.length > 0)
+      if (visitedInitialOptions.length > 0){
         archiveButtonElem.style.opacity = 1;
-      const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
+        initialPrompt += "For reference, here are some topics I've already chosen to explore previously:\n" + visitedInitialOptions.join("\n");
+      }
       const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], (visitedInitialOptions.length > 0) ? 1.5 : 1);
       let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
       await appendAssistantMessage(message);
@@ -268,7 +270,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       updateInputButtonText();
     }
 
-    function storeTopMessageInHistory(message) {
+    function storeTopMessageInArchive(message) {
       const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
       if (!visitedInitialOptions.includes(message))
         visitedInitialOptions.push(message);
@@ -278,7 +280,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     async function userSendMessage(userMessage) {
       if (document.querySelectorAll(".user").length == 0)
-        storeTopMessageInHistory(userMessage);
+        storeTopMessageInArchive(userMessage);
       chatActiveHistory.push({ role: "user", content: userMessage });
       appendBubble("user", userMessage);
       appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
