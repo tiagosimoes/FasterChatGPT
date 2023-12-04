@@ -198,7 +198,7 @@
       if (visitedInitialOptions.length > 0)
         archiveButtonElem.style.opacity = 1;      
       const initialPrompt = "Give me a list of 7 random different and interesting topics I could explore. Be very succinct. Just output the list.";
-      const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], 1.5);
+      const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], 1.6);
       let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
       await appendAssistantMessage(message);
       getById("resetButton").style.opacity = 1;
