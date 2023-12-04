@@ -29,7 +29,7 @@
   </div>
   <form id="chatForm"
     style="background-color: var(--background-color);position: fixed;display: block;width: 100%;bottom: 0;padding: 10px;"">
-    <input id="userInput" type="text" placeholder="...or anything else (related or not)"
+    <input id="userInput" type="text" autofocus="true" autocomplete="off" autocapitalize="off"
     style="width: calc(100% - 50px);margin: auto;box-sizing: border-box;padding: 10px;border:1px solid var(--primary-color);border-radius: 10px;height:42px">
     </input>
     <button type="submit" id="sendButton" disabled="true">⤒</button>
@@ -64,6 +64,10 @@
     #sendButton:disabled {
       color: #999;
       background-color: rgb(240, 240, 240);
+    }
+
+    input:focus-visible{
+      outline: 1px solid var(--primary-color);
     }
 
     * {
@@ -202,6 +206,7 @@
       const initialSuggestions = await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], (visitedInitialOptions.length > 0)? 1.5: 1);
       let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
       await appendAssistantMessage(message);
+      userInputElem.placeholder = "...or anything else (related or not)";
       getById("resetButton").style.opacity = 1;
     }
 
