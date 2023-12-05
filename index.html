@@ -247,6 +247,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       visitedInitialOptions.reverse();
       visitedInitialOptions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
       archiveButtonElem.style.opacity = 0;
+      refreshButtonElem.style.opacity = 1;
     }
 
     function onSubmit(event) {
