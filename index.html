@@ -276,11 +276,14 @@ Clarifications, if necessary, are included in the 3 suggestions.
       visitedInitialPrompts.reverse();
       visitedInitialPrompts.forEach(async suggestion => {
         var suggestionBubble = await appendSuggestionBubbleAndGetFromAI(suggestion);
-        suggestionBubble.addEventListener("touchmove", () => {
-          suggestionBubble.remove();
-          const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
-          localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts.filter(item => item !== suggestion)));
-        });
+        let pressTimer;
+        suggestionBubble.addEventListener("touchstart", () => 
+          pressTimer = setTimeout(()  => {
+            suggestionBubble.remove();
+            const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+            localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts.filter(item => item !== suggestion)));
+          }, 1500));
+        suggestionBubble.addEventListener("touchend", () => clearTimeout(pressTimer));
       });
       archiveButtonElem.style.opacity = 0;
       refreshButtonElem.style.opacity = 1;
