@@ -238,11 +238,11 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatHistoryElem.innerHTML = "";
       appendBubble("thinking", "...");
       let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI();
-      storeNextInitialSuggestionsToCache();
       let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
       await appendAssistantMessage(message);
-      userInputElem.placeholder = "...or anything else (related or not)";
       refreshButtonElem.style.opacity = 1;
+      await storeNextInitialSuggestionsToCache();
+      userInputElem.placeholder = "...or anything else (related or not)";
     }
 
     async function storeNextInitialSuggestionsToCache() {
@@ -259,12 +259,12 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
       if (visitedInitialPrompts.length > 0){
         archiveButtonElem.style.opacity = 1;
-        let initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialPrompts.join("\n- ") + "\n\n";
+        let initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialPrompts.reverse().join("\n- ") + "\n\n";
         initialPrompt += "Now give me a list of 7 other topics I could find interesting to explore. Be very succinct. Just output the list.";
         return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }]);
       } else {
         let initialPrompt = "Give me a list of 7 interesting topics to explore. Be very succinct. Just output the list.";
-        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], 1.7);
+        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }]);
       }
     }
 
