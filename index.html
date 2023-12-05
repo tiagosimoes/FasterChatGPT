@@ -334,10 +334,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
         if (lastOne > 0)
           [messagePart, rawSuggestions] = [message.slice(0, lastOne), message.slice(lastOne)];
       }
-      // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc.
-      const numberAndDot = /^\d+[\.\)]\s+/;
+      // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc., and also leading hyphens (-).
+      const numberAndDot = /^-?(\d+[\.\)])?\s+/;
       rawSuggestions = rawSuggestions.split("\n");
-      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.map(s => s.replace(numberAndDot, "").trimStart("-").trim()).filter(s => s != "");
+      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.map(s => s.replace(numberAndDot, "").trim()).filter(s => s != "");
       return [messagePart.trim(), suggestionsPart];
     }
 
