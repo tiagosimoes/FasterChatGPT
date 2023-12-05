@@ -252,7 +252,6 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     function getNextInitialSuggestionsFromCache() {
       var suggestions = localStorage.getItem("nextInitialSuggestions");
-      localStorage.removeItem("nextInitialSuggestions");
       return suggestions;      
     }
 
