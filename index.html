@@ -274,7 +274,14 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatHistoryElem.innerHTML = "";
       appendBubble("user", "What I've explored so far:");
       visitedInitialPrompts.reverse();
-      visitedInitialPrompts.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
+      visitedInitialPrompts.forEach(async suggestion => {
+        var suggestionBubble = await appendSuggestionBubbleAndGetFromAI(suggestion);
+        suggestionBubble.addEventListener("touchmove", () => {
+          suggestionBubble.remove();
+          const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+          localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts.filter(item => item !== suggestion)));
+        });
+      });
       archiveButtonElem.style.opacity = 0;
       refreshButtonElem.style.opacity = 1;
     }
@@ -369,6 +376,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
       if (record.visited)
         suggestionBubble.classList.add("visited");
+      return suggestionBubble;
     }
 
     async function onSuggestionClick(suggestionBubble, message) {
