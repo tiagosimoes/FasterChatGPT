@@ -159,7 +159,7 @@ You should always make educated guesses.
 At the end of any response, write "WHAT NEXT?" and present 3 likely follow-up user prompts.
 Clarifications, if necessary, are included in the 3 suggestions.
 `;
-    const nextInitialSuggestions = `
+    const firstInitialSuggestions = `
 - Artificial intelligence and its ethical implications.
 - The future of sustainable energy sources.
 - The impact of social media on society.
@@ -168,7 +168,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
 - The role of genetics in human health and behavior.
 - The influence of technology on human relationships.
 `;
-    localStorage.setItem("nextInitialSuggestions", nextInitialSuggestions); // to make the very first initial load faster
+    localStorage.setItem("nextInitialSuggestions", firstInitialSuggestions); // to make the very first initial load faster
     let chatActiveHistory = [];
     const historySeparator = "\n";
     const getById = id => document.getElementById(id);
