@@ -168,7 +168,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
 - The role of genetics in human health and behavior.
 - The influence of technology on human relationships.
 `;
-    localStorage.setItem("nextInitialSuggestions", firstInitialSuggestions); // to make the very first initial load faster
+    if (!localStorage.getItem("nextInitialSuggestions"))
+      localStorage.setItem("nextInitialSuggestions", firstInitialSuggestions); // to make the very first initial load faster
     let chatActiveHistory = [];
     const historySeparator = "\n";
     const getById = id => document.getElementById(id);
