@@ -159,6 +159,16 @@ You should always make educated guesses.
 At the end of any response, write "WHAT NEXT?" and present 3 likely follow-up user prompts.
 Clarifications, if necessary, are included in the 3 suggestions.
 `;
+    const nextInitialSuggestions = `
+- Artificial intelligence and its ethical implications.
+- The future of sustainable energy sources.
+- The impact of social media on society.
+- The potential for life beyond Earth.
+- The psychology behind decision-making.
+- The role of genetics in human health and behavior.
+- The influence of technology on human relationships.
+`;
+    localStorage.setItem("nextInitialSuggestions", nextInitialSuggestions); // to make the very first initial load faster
     let chatActiveHistory = [];
     const historySeparator = "\n";
     const getById = id => document.getElementById(id);
@@ -251,10 +261,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
         archiveButtonElem.style.opacity = 1;
         let initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialOptions.join("\n- ") + "\n\n";
         initialPrompt += "Now give me a list of 7 other topics I could find interesting to explore. Be very succinct. Just output the list.";
-        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], false);
+        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }]);
       } else {
         let initialPrompt = "Give me a list of 7 interesting topics to explore. Be very succinct. Just output the list.";
-        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], false);
+        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], 1.7);
       }
     }
 
@@ -419,13 +429,13 @@ Clarifications, if necessary, are included in the 3 suggestions.
       return record;
     }
 
-    async function getChatCompletionFromAI(previousMessages, gpt4 = false) {
+    async function getChatCompletionFromAI(previousMessages, temperature = 1) {
       // send just the instructions + the last 6 messages (to save tokens)
       const previousMessagesTrimmed = (previousMessages.length > 7) ? [previousMessages[0], ...previousMessages.slice(-6)] : [...previousMessages];
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openai_key },
-        body: JSON.stringify({ model: gpt4 ? "gpt-4" : "gpt-3.5-turbo", messages: previousMessagesTrimmed })
+        body: JSON.stringify({ model: "gpt-3.5-turbo", messages: previousMessagesTrimmed, temperature:temperature })
       });
       if (response.status === 401) {
         localStorage.removeItem("openai_key");
