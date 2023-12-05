@@ -256,10 +256,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     async function getInitialSuggestionsFromAI(){
-      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
-      if (visitedInitialOptions.length > 0){
+      const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+      if (visitedInitialPrompts.length > 0){
         archiveButtonElem.style.opacity = 1;
-        let initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialOptions.join("\n- ") + "\n\n";
+        let initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialPrompts.join("\n- ") + "\n\n";
         initialPrompt += "Now give me a list of 7 other topics I could find interesting to explore. Be very succinct. Just output the list.";
         return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }]);
       } else {
@@ -269,12 +269,12 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     function showArchive() {
-      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
+      const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
       chatActiveHistory = [{ role: "system", content: instructions }];
       chatHistoryElem.innerHTML = "";
       appendBubble("user", "What I've explored so far:");
-      visitedInitialOptions.reverse();
-      visitedInitialOptions.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
+      visitedInitialPrompts.reverse();
+      visitedInitialPrompts.forEach(suggestion => appendSuggestionBubbleAndGetFromAI(suggestion));
       archiveButtonElem.style.opacity = 0;
       refreshButtonElem.style.opacity = 1;
     }
@@ -301,10 +301,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     function storeTopMessageInArchive(message) {
-      const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
-      if (!visitedInitialOptions.includes(message))
-        visitedInitialOptions.push(message);
-      localStorage.setItem("visitedInitialOptions", JSON.stringify(visitedInitialOptions));
+      const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+      if (!visitedInitialPrompts.includes(message))
+        visitedInitialPrompts.push(message);
+      localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts));
       archiveButtonElem.style.opacity = 1;
     }
 
@@ -450,7 +450,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const tableName = "messagesV2";
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open("ChatDB", 5);
-        request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV2", { keyPath: "key" });
+        request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV3", { keyPath: "key" });
         request.onerror = e => reject("IndexedDB error: " + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
