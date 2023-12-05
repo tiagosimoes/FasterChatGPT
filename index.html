@@ -249,12 +249,12 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const visitedInitialOptions = JSON.parse(localStorage.getItem("visitedInitialOptions")) || [];
       if (visitedInitialOptions.length > 0){
         archiveButtonElem.style.opacity = 1;
-        let initialPrompt = "Here are some topics I've already found interesting:\n" + visitedInitialOptions.join("\n") + "\n\n";
+        let initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialOptions.join("\n- ") + "\n\n";
         initialPrompt += "Now give me a list of 7 other topics I could find interesting to explore. Be very succinct. Just output the list.";
-        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], true);
+        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], false);
       } else {
         let initialPrompt = "Give me a list of 7 interesting topics to explore. Be very succinct. Just output the list.";
-        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], true);
+        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], false);
       }
     }
 
@@ -336,8 +336,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
       }
       // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc.
       const numberAndDot = /^\d+[\.\)]\s+/;
-      rawSuggestions = rawSuggestions.replaceAll("\n- ", "\n").split("\n");
-      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.map(s => s.replace(numberAndDot, "").trim()).filter(s => s != "");
+      rawSuggestions = rawSuggestions.split("\n");
+      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.map(s => s.replace(numberAndDot, "").trimStart("-").trim()).filter(s => s != "");
       return [messagePart.trim(), suggestionsPart];
     }
 
