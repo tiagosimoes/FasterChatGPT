@@ -15,7 +15,7 @@ Some of them are particularly painful on mobile, and that's what *Faster ChatGPT
 
 ## How is *Faster ChatGPT* better?
 - **It always gives suggestions!**
-  - So you don't have to type so much.
+  - So you don't have to type or think so much.
 - **It gives short answers!**
   - That you can expand through suggestions.
 - **It's blazing fast, because it pre-fetches stuff!**
