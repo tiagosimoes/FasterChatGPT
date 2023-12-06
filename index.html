@@ -359,8 +359,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc., and also leading hyphens (-).
       const numberAndDot = /^-?(\d+[\.\)])?\s+/;
       const leadingAndEndingQuotes = /^['"]|['"]$/g;
-      rawSuggestions = rawSuggestions.split("\n");
-      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.map(s => s.replace(numberAndDot, "").replace(leadingAndEndingQuotes, '').trim()).filter(s => s != "");
+      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.split("\n").map(s => s.replace(numberAndDot, "").replace(leadingAndEndingQuotes, '').trim()).filter(s => s != "");
       return [messagePart.trim(), suggestionsPart];
     }
 
