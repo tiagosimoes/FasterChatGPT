@@ -2,7 +2,14 @@
   "name": "Faster ChatGPT",
   "short_name": "Faster ChatGPT",
   "start_url": "/FasterChatGPT",
-  "display": "browser",
+  "display": "standalone",
   "background_color": "hsl(180, 66%, 21%)",
-  "theme_color": "hsl(180, 66%, 21%)"
+  "theme_color": "hsl(180, 66%, 21%)",
+  "icons": [
+    {
+    "src": "logo.png",
+    "sizes": "900x900",
+    "type": "image/png"
+    }
+    ]
 }
