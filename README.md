@@ -4,7 +4,7 @@ Type less (or nothing at all) and get faster results.
 
 ## ChatGPT has several usability problems
 
-These are some of them:
+Like these:
 1. Users need to type too much;
 2. Users need to wait too much;
 3. Users need to read too much;
