@@ -194,7 +194,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     const getDataFromDB = key => putOrGetInIndexDB(key);
     const setDataInDB = object => putOrGetInIndexDB(object);
-    const updateInputButtonDisabled = () => sendButtonElem.disabled = ((isScrollToTopState() && window.scrollY <= 60) || (!isScrollToTopState() && userInputElem.value === ""));
+    const updateInputButtonDisabled = () => 
+      sendButtonElem.disabled = ((isScrollToTopState() && window.scrollY <= 60) || (!isScrollToTopState() && userInputElem.value === ""));
     const isScrollToTopState = () => sendButtonElem.innerText === "⤒";
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -212,12 +213,13 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     if (location.hash) {
       // users can share they OpenAI key in the URL hash, if they really want to
-      history.pushState(null, "", location.href.split('#')[0]);  // Clear the hash in the UR
+      history.pushState(null, "", location.href.split('#')[0]);  // Clear the hash in the URL
       localStorage.setItem("openai_key", openai_key);
     }
 
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => parseAndAppendAssistantMessage("Type less (or nothing at all) and get faster results. [Read more](https://github.com/tiagosimoes/FasterChatGPT/#readme).<br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
+      document.addEventListener("DOMContentLoaded", () => 
+        parseAndAppendAssistantMessage("Type less (or nothing at all) and get faster results. [Read more](https://github.com/tiagosimoes/FasterChatGPT/#readme).<br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
       userInputElem.placeholder = "OpenAI API key";
       chatFormElem.removeEventListener("submit", onSubmit);
       chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
@@ -372,7 +374,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
       // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc., and also leading hyphens (-).
       const numberAndDot = /^-?(\d+[\.\)])?\s+/;
       const leadingAndEndingQuotes = /^['"]|['"]$/g;
-      const suggestionsPart = !rawSuggestions ? [] : rawSuggestions.split("\n").map(s => s.replace(numberAndDot, "").replace(leadingAndEndingQuotes, '').trim()).filter(s => s != "");
+      const suggestionsPart = !rawSuggestions ? [] : 
+        rawSuggestions.split("\n").map(s => s.replace(numberAndDot, "").replace(leadingAndEndingQuotes, '').trim()).filter(s => s != "");
       return [messagePart.trim(), suggestionsPart];
     }
 
@@ -386,7 +389,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     async function appendSuggestionBubbleAndGetFromAI(message, hidden = false) {
       const suggestionBubble = appendBubble("suggestion", message);
-      if (hidden) // if it's a user typed message, we'll also add it has a suggestion but hidden, so it can be toggled with the others
+      if (hidden) // if it's a user typed message, we'll also add it as a suggestion but hidden, so it can be toggled with the others
         suggestionBubble.classList.add("hidden");
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
       let possibleNewChatHistory = [...chatActiveHistory];
