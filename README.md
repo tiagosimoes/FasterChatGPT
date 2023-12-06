@@ -21,7 +21,7 @@ Some of them are particularly painful on mobile, and that's what *Faster ChatGPT
 - **It's blazing fast!**
   - It tries to always be one step ahead of you, pre-fetching stuff.
 - **It (smartly) decides between thinking fast and slow!**
-  - If constantly adapts to you: when you're speed reading, you'll get fast results; if you're going a bit more slowly, you'll get smarter results.
+  - If constantly adapts to you: when you're speed reading, you'll get fast results; if you're going a bit more slowly, you'll get smarter results. This will subtly keep you in a state of flow.
 - **It becomes smarter as you use it!**
   - The more you use it, the better the initial suggestions will be.
 
