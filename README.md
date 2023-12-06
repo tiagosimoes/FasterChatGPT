@@ -11,7 +11,7 @@ These are some of them:
 4. Users need to think too much;
 5. Users need to choose between fast (GPT3.5) and smart (GPT4).
 
-Some are particularly bad on mobile, and that's what *Faster ChatGPT* tries to address.
+Some of them are particularly painful on mobile, and that's what *Faster ChatGPT* tries to address.
 
 ## How is *Faster ChatGPT* better?
 - **It always gives suggestions!**
