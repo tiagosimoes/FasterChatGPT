@@ -211,17 +211,30 @@ Clarifications, if necessary, are included in the 3 suggestions.
     const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
 
     if (location.hash) {
+      // users can share they OpenAI key in the URL hash, if they really want to
       history.pushState(null, "", location.href.split('#')[0]);  // Clear the hash in the UR
       localStorage.setItem("openai_key", openai_key);
     }
 
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results. [Read more](https://github.com/tiagosimoes/FasterChatGPT/#readme).<br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
+      document.addEventListener("DOMContentLoaded", () => parseAndAppendAssistantMessage("Type less (or nothing at all) and get faster results. [Read more](https://github.com/tiagosimoes/FasterChatGPT/#readme).<br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
       userInputElem.placeholder = "OpenAI API key";
       chatFormElem.removeEventListener("submit", onSubmit);
       chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
     } else {
-      // get the "q" query parameter
+      if (!hasOptionalQParameter())
+        document.addEventListener("DOMContentLoaded", getInitialSuggestions);
+    }
+
+    function onOpenAIKeySubmit(event) {
+      // the user has entered his OpenAI key. Save to local storage and reload the page
+      event.preventDefault();
+      localStorage.setItem("openai_key", userInputElem.value);
+      setTimeout(() => document.location.reload(), 1000);
+    }
+
+    function hasOptionalQParameter() {
+      // e.g. to integrate this with workflows like Alfred, you can pass a q parameter in the URL
       const urlParams = new URLSearchParams(window.location.search);
       const q = urlParams.get('q');
       if (q != null) {
@@ -229,45 +242,31 @@ Clarifications, if necessary, are included in the 3 suggestions.
         refreshButtonElem.style.opacity = 1;
         if (q != "") {
           document.addEventListener("DOMContentLoaded", () => {
-            appendSuggestionBubbleAndGetFromAI(q, true);
+            appendSuggestionBubbleAndGetFromAI(q, /*hidden*/ true);
             userSendMessage(q);
           });
+          return true;
         }
-      } else
-        document.addEventListener("DOMContentLoaded", getInitialSuggestions);
+      }
     }
 
-
-    function onOpenAIKeySubmit(event) {
-      event.preventDefault();
-      localStorage.setItem("openai_key", userInputElem.value);
-      setTimeout(() => document.location.reload(), 1000);
-    }
+    const storeNextInitialSuggestionsFromAIToCache = async () => // think slowly, take your time to get the next initial suggestions
+      localStorage.setItem("nextInitialSuggestions", await getInitialSuggestionsFromAI(/*thinkFast*/ false));
+    
+    const getNextInitialSuggestionsFromCache = () => localStorage.getItem("nextInitialSuggestions");
 
     async function getInitialSuggestions() {
       chatActiveHistory = [{ role: "system", content: instructions }];
       chatHistoryElem.innerHTML = "";
       appendBubble("thinking", "...");
       // if there is no nextInitialSuggestions in cache, get it fast from AI
-      let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI(true);
+      let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI(/*thinkFast*/ true);
       // shuffle them
       initialSuggestions = initialSuggestions.split("\n").sort(() => Math.random() - 0.5).join("\n");  
-      let message = "What do you want to explore? WHAT NEXT?" + initialSuggestions;
-      await appendAssistantMessage(message);
+      await parseAndAppendAssistantMessage("What do you want to explore? WHAT NEXT?" + initialSuggestions);
       refreshButtonElem.style.opacity = 1;
-      await storeNextInitialSuggestionsToCache();
+      await storeNextInitialSuggestionsFromAIToCache();
       userInputElem.placeholder = "...or anything else (related or not)";
-    }
-
-    async function storeNextInitialSuggestionsToCache() {
-      // think slowly, take your time to get the next initial suggestions
-      const nextInitialSuggestions = await getInitialSuggestionsFromAI(false);
-      localStorage.setItem("nextInitialSuggestions", nextInitialSuggestions);
-    }
-
-    function getNextInitialSuggestionsFromCache() {
-      var suggestions = localStorage.getItem("nextInitialSuggestions");
-      return suggestions;      
     }
 
     async function getInitialSuggestionsFromAI(thinkFast) {
@@ -310,7 +309,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (isScrollToTopState())
         scrollToTop();
       else {
-        appendSuggestionBubbleAndGetFromAI(userInputElem.value, true);
+        appendSuggestionBubbleAndGetFromAI(userInputElem.value, /*hidden*/ true);
         userSendMessage(userInputElem.value);
         clearUserInput();
       }
@@ -346,15 +345,15 @@ Clarifications, if necessary, are included in the 3 suggestions.
     async function fetchAndDisplayAIResponse() {
       try {
         const record = await getChatCompletionFromCache(chatActiveHistory);
-        await appendAssistantMessage(record.message);
+        await parseAndAppendAssistantMessage(record.message);
         record.visited = true;
         await setDataInDB(record);
       } catch (error) {
-        appendAssistantMessage(error.message);
+        parseAndAppendAssistantMessage(error.message);
       }
     }
 
-    async function appendAssistantMessage(message) {
+    async function parseAndAppendAssistantMessage(message) {
       chatActiveHistory.push({ role: "assistant", content: message });
       chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
       const [messagePart, suggestions] = parseMessageAndSuggestions(message);
@@ -387,24 +386,27 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     async function appendSuggestionBubbleAndGetFromAI(message, hidden = false) {
       const suggestionBubble = appendBubble("suggestion", message);
-      if (hidden)
+      if (hidden) // if it's a user typed message, we'll also add it has a suggestion but hidden, so it can be toggled with the others
         suggestionBubble.classList.add("hidden");
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
       let possibleNewChatHistory = [...chatActiveHistory];
       possibleNewChatHistory.push({ role: "user", content: message });
       const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
-      if (record.visited)
-        suggestionBubble.classList.add("visited");
+      if (record.visited) // gray out visited messages
+        suggestionBubble.classList.add("visited"); 
       return suggestionBubble;
     }
 
     async function onSuggestionClick(suggestionBubble, message) {
+      // when clicking on a suggestion, toggle it with the selected one, if there is one
       showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble);
       suggestionBubble.classList.add("hidden");
       await userSendMessage(message);
     }
 
     function showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble) {
+      // when the user selects a different suggestion in the middle, we'll collapse other suggestions
+      // and remove all messages below it, so the user continue the conversation from this different place
       function showSiblingSuggestions(startBubble, direction) {
         let sibling = startBubble[direction];
         while (sibling && sibling.classList.contains("suggestion")) {
@@ -430,7 +432,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
         nextSibling.remove();
         nextSibling = storeNextSibling;
       }
-      if (userMessagegDeleted)
+      if (userMessagegDeleted) // if we deleted user messages, we need to update the chatActiveHistory accordingly
         chatActiveHistory = chatActiveHistory.toSpliced(- userMessagegDeleted * 2);
     }
 
@@ -442,11 +444,11 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (record)
         return record;
       // thinking fast
-      message = await getChatCompletionFromAI(previousMessages, true);
+      message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
       record = { key: allPreviousUserMessages, message: message, visited: false };
       await setDataInDB(record);
       // thinking slow
-      message = await getChatCompletionFromAI(previousMessages, false);
+      message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ false);
       record = await getDataFromDB(allPreviousUserMessages);
       if(!record.visited) {  // if you have already talked, don't take it back :)
         record = { key: allPreviousUserMessages, message: message, visited: false };
@@ -465,7 +467,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
     
     async function getChatCompletionFromAI(previousMessages, thinkFast) {
-      // send just the instructions + the last 6 messages (to save tokens)
+      // send just the instructions + the last 6 messages (to save tokens, AKA time and money)
       const previousMessagesTrimmed = (previousMessages.length > 7) ? [previousMessages[0], ...previousMessages.slice(-6)] : [...previousMessages];
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
