@@ -462,8 +462,12 @@ Clarifications, if necessary, are included in the 3 suggestions.
     async function getIndexDBStore() {
       const tableName = "messagesV3";
       const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("ChatDB", 5);
-        request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV3", { keyPath: "key" });
+        const request = indexedDB.open("ChatDB", 7);
+        request.onupgradeneeded = e => {
+          if (!e.target.result.objectStoreNames.contains(tableName)) {
+            e.target.result.createObjectStore(tableName, { keyPath: "key" });
+          }
+        };
         request.onerror = e => reject("IndexedDB error: " + e.target.errorCode);
         request.onsuccess = e => resolve(e.target.result);
       });
