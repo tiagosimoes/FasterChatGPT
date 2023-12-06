@@ -17,8 +17,8 @@
 
 <body style="background-color: var(--background-color);">
   <div
-    style="background: var(--header-gradient); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;">
-    Faster ChatGPT</div>
+    style="background: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;"><img src="logo_transparent.png" style="width: 30px;vertical-align: middle;margin:-5px 0px;"/>
+    <a href="https://github.com/tiagosimoes/FasterChatGPT#readme" style="color: white;text-decoration: none;" target="_blank"><i>Faster ChatGPT</i></a></div>
   <button type="button" id="archiveButton"
     style="color:#ffffffee;width:22px;height: 42px;left: 10px;top: 5px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8634;</button>
   <button type="button" id="refreshButton"
@@ -160,8 +160,8 @@
     @media (display-mode: standalone) {
       #chatForm {
         padding-bottom: 40px!important;
-      }
-    }
+      } 
+    }  
   </style>
   <script>
     const instructions = `
@@ -216,7 +216,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     if (!openai_key) {
-      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results.  <br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
+      document.addEventListener("DOMContentLoaded", () => appendAssistantMessage("Type less (or nothing at all) and get faster results. [Read more](https://github.com/tiagosimoes/FasterChatGPT/#readme).<br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
       userInputElem.placeholder = "OpenAI API key";
       chatFormElem.removeEventListener("submit", onSubmit);
       chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
@@ -463,7 +463,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       } while (!record);
       return record;
     }
-
+    
     async function getChatCompletionFromAI(previousMessages, thinkFast) {
       // send just the instructions + the last 6 messages (to save tokens)
       const previousMessagesTrimmed = (previousMessages.length > 7) ? [previousMessages[0], ...previousMessages.slice(-6)] : [...previousMessages];
