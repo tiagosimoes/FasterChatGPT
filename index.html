@@ -283,12 +283,13 @@ Clarifications, if necessary, are included in the 3 suggestions.
       visitedInitialPrompts.forEach(async suggestion => {
         var suggestionBubble = await appendSuggestionBubbleAndGetFromAI(suggestion);
         let pressTimer;
+        // allow removing from archive by long press
         suggestionBubble.addEventListener("touchstart", () => 
           pressTimer = setTimeout(()  => {
             suggestionBubble.remove();
             const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
             localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts.filter(item => item !== suggestion)));
-          }, 1500));
+          }, 1000));
         suggestionBubble.addEventListener("touchend", () => clearTimeout(pressTimer));
       });
       archiveButtonElem.style.opacity = 0;
