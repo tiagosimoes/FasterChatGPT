@@ -460,7 +460,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     async function getIndexDBStore() {
-      const tableName = "messagesV2";
+      const tableName = "messagesV3";
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open("ChatDB", 5);
         request.onupgradeneeded = e => e.target.result.createObjectStore("messagesV3", { keyPath: "key" });
