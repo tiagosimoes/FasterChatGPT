@@ -273,8 +273,8 @@ You should always make educated guesses.
       // if there is no nextInitialSuggestions in cache, get it fast from AI
       let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI(/*thinkFast*/ true);
       await appendAssistantMessageAndSuggestions(initialSuggestions, /*shuffleSuggestions*/ true); //shuffling because top initial suggestions are often the same
-      await storeNextInitialSuggestionsFromAIToCache();
       userInputElem.placeholder = "...or anything else (related or not)";
+      await storeNextInitialSuggestionsFromAIToCache();
     }
 
     async function getInitialSuggestionsFromAI(thinkFast) {
