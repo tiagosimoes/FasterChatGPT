@@ -170,7 +170,7 @@ You should always make educated guesses.
 At the end of any response, write "WHAT NEXT?" and present 3 likely follow-up user prompts.
 Clarifications, if necessary, are included in the 3 suggestions.
 `;
-    const firstInitialSuggestions = `
+  const firstInitialSuggestions = `
 - Artificial intelligence and its ethical implications.
 - The future of sustainable energy sources.
 - The impact of social media on society.
@@ -244,8 +244,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
         refreshButtonElem.style.opacity = 1;
         if (q != "") {
           document.addEventListener("DOMContentLoaded", () => {
-            appendSuggestionBubbleAndGetFromAI(q, /*hidden*/ true);
-            userSendMessage(q);
+            appendSuggestionBubbleAndGetFromAI(q, /*isUserTypedMessage*/ true);
+            appendUserMessage(q);
           });
           return true;
         }
@@ -311,8 +311,8 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (isScrollToTopState())
         scrollToTop();
       else {
-        appendSuggestionBubbleAndGetFromAI(userInputElem.value, /*hidden*/ true);
-        userSendMessage(userInputElem.value);
+        appendSuggestionBubbleAndGetFromAI(userInputElem.value, /*isUserTypedMessage*/ true);
+        appendUserMessage(userInputElem.value);
         clearUserInput();
       }
     }
@@ -335,7 +335,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       archiveButtonElem.style.opacity = 1;
     }
 
-    async function userSendMessage(userMessage) {
+    async function appendUserMessage(userMessage) {
       if (document.querySelectorAll(".user").length == 0)
         storeTopMessageInArchive(userMessage);
       chatActiveHistory.push({ role: "user", content: userMessage });
@@ -387,14 +387,15 @@ Clarifications, if necessary, are included in the 3 suggestions.
       return newMessageElement;
     }
 
-    async function appendSuggestionBubbleAndGetFromAI(message, hidden = false) {
+    async function appendSuggestionBubbleAndGetFromAI(message, isUserTypedMessage = false) {
       const suggestionBubble = appendBubble("suggestion", message);
-      if (hidden) // if it's a user typed message, we'll also add it as a suggestion but hidden, so it can be toggled with the others
+      if (isUserTypedMessage) // if it's a typed message, add it as a suggestion but hidden, so it later can be also toggled as the others
         suggestionBubble.classList.add("hidden");
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
       let possibleNewChatHistory = [...chatActiveHistory];
       possibleNewChatHistory.push({ role: "user", content: message });
-      const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
+      // if the user as put in his time to type a message, we'll also do that
+      const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory, /*thinkOnlySlowly*/ isUserTypedMessage);
       if (record.visited) // gray out visited messages
         suggestionBubble.classList.add("visited"); 
       return suggestionBubble;
@@ -403,13 +404,12 @@ Clarifications, if necessary, are included in the 3 suggestions.
     async function onSuggestionClick(suggestionBubble, message) {
       // when clicking on a suggestion, toggle it with the selected one, if there is one
       showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble);
-      suggestionBubble.classList.add("hidden");
-      await userSendMessage(message);
+      await appendUserMessage(message);
     }
 
     function showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble) {
-      // when the user selects a different suggestion in the middle, we'll collapse other suggestions
-      // and remove all messages below it, so the user continue the conversation from this different place
+      // when the user selects a different suggestion in the middle, we'll expand other suggestions if hidden,
+      // hide this one, and remove all messages below it, so the user continue the conversation from this different place
       function showSiblingSuggestions(startBubble, direction) {
         let sibling = startBubble[direction];
         while (sibling && sibling.classList.contains("suggestion")) {
@@ -424,6 +424,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       showSiblingSuggestions(suggestionBubble, "previousSibling");
       let nextSiblingNonSuggestion = showSiblingSuggestions(suggestionBubble, "nextSibling");
       removeAllMessagesFromThisToBottom(nextSiblingNonSuggestion);
+      suggestionBubble.classList.add("hidden");
     }
 
     function removeAllMessagesFromThisToBottom(nextSibling) {
@@ -441,18 +442,21 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     const getAllPreviousUserMessages = (previousMessages) => previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
 
-    async function storeChatCompletionFromAIToCache(previousMessages) {
+    async function storeChatCompletionFromAIToCache(previousMessages, thinkOnlySlowly = false) {
       const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
       let record = await getDataFromDB(allPreviousUserMessages);
       if (record)
         return record;
-      // thinking fast
-      message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
-      record = { key: allPreviousUserMessages, message: message, visited: false };
-      await setDataInDB(record);
+      if (!thinkOnlySlowly){
+        // thinking fast
+        message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
+        record = { key: allPreviousUserMessages, message: message, visited: false };
+        await setDataInDB(record);
+      }
       // thinking slow
       message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ false);
-      record = await getDataFromDB(allPreviousUserMessages);
+      record = await getDataFromDB(allPreviousUserMessages) ?? { key: allPreviousUserMessages, message: message, visited: false };
+
       if(!record.visited) {  // if you have already talked, don't take it back :)
         record = { key: allPreviousUserMessages, message: message, visited: false };
         await setDataInDB(record);
