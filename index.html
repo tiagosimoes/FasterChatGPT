@@ -17,12 +17,14 @@
 
 <body style="background-color: var(--background-color);">
   <div
-    style="background: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;"><img src="logo_transparent.png" style="width: 22px;vertical-align: 1px;margin:-5px 0px;"/>
-    <a href="https://github.com/tiagosimoes/FasterChatGPT#readme" style="color: white;text-decoration: none;margin-right:15px" target="_blank"><i>Faster ChatGPT</i></a></div>
+    style="background: var(--primary-color); color:#ffffffee; width: 100%;top:0;padding:20px;z-index: 1; text-align: center;position: sticky;
+    top: -40px;" onclick="scrollToTop()"><img src="logo_transparent.png" style="width: 22px;vertical-align: 1px;margin:-5px 0px;"/>
   <button type="button" id="archiveButton"
-    style="color:#ffffffee;width:22px;height: 42px;left: 10px;top: 3px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8634;</button>
-  <button type="button" id="refreshButton"
-    style="color:#ffffffee;width:22px;height: 42px;right: 10px;top: 3px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; margin: 5px;opacity: 0; transition: all .3s;border: 0;">&#8635;</button>
+  style="color:#ffffffee;width:22px;height: 42px;left: 10px;top: 3px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; z-index:1;margin: 5px;border: 0;">&#8634;</button>
+<button type="button" id="refreshButton"
+  style="color:#ffffffee;width:22px;height: 42px;right: 10px;top: 3px;border-radius: 10px;padding:0;background-color:transparent; position: absolute; z-index:1; margin: 5px; border: 0;">&#8635;</button>
+
+<a href="https://github.com/tiagosimoes/FasterChatGPT#readme" style="color: white;text-decoration: none;margin-right:15px" target="_blank"><i>Faster ChatGPT</i></a></div>
   <div id="chatHistory" style="margin: auto;margin-bottom: 90px;"></div>
   <form id="chatForm"
     style="background-color: var(--background-color);position: fixed;display: block;width: 100%;bottom: 0;">
@@ -164,25 +166,28 @@
     }  
   </style>
   <script>
+    const modelVersion = 9;
+    const systemMessageFormat = `Output JSON, in the format {"assistantMessage": "message", "suggestionsForFollowUpUserPrompts": ["suggestion1", "suggestion2", "suggestion3"]}`;
     const instructions = `
-You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for the follow up conversation. 
+You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for follow up user prompts. 
 You should always make educated guesses. 
-At the end of any response, write "WHAT NEXT?" and present 3 likely follow-up user prompts.
-Clarifications, if necessary, are included in the 3 suggestions.
-`;
-  const firstInitialSuggestions = `
-- Artificial intelligence and its ethical implications.
-- The future of sustainable energy sources.
-- The impact of social media on society.
-- The potential for life beyond Earth.
-- The psychology behind decision-making.
-- The role of genetics in human health and behavior.
-- The influence of technology on human relationships.
-`;
-    if (!localStorage.getItem("nextInitialSuggestions"))
-      localStorage.setItem("nextInitialSuggestions", firstInitialSuggestions); // to make the very first initial load faster
+` + systemMessageFormat;
+
+  const firstInitialSuggestions = `{"assistantMessage": "What do you want to explore?", "suggestionsForFollowUpUserPrompts": [
+"Artificial intelligence and its ethical implications",
+"The future of sustainable energy sources",
+"The impact of social media on society",
+"The potential for life beyond Earth",
+"The psychology behind decision-making",
+"The role of genetics in human health and behavior",
+"The influence of technology on human relationships"
+]}`;
+
+    const nextInitialSuggestionsKey = "nextInitialSuggestionsV" + modelVersion;
+    if (!localStorage.getItem(nextInitialSuggestionsKey))
+      localStorage.setItem(nextInitialSuggestionsKey, firstInitialSuggestions); // to make the very first initial load faster
     let chatActiveHistory = [];
-    const historySeparator = "\n";
+    const historySeparator = "--->";
     const getById = id => document.getElementById(id);
     const userInputElem = getById("userInput");
     const sendButtonElem = getById("sendButton");
@@ -194,20 +199,22 @@ Clarifications, if necessary, are included in the 3 suggestions.
 
     const getDataFromDB = key => putOrGetInIndexDB(key);
     const setDataInDB = object => putOrGetInIndexDB(object);
-    const updateInputButtonDisabled = () => 
+    const updateSendButtonDisabled = () => 
       sendButtonElem.disabled = ((isScrollToTopState() && window.scrollY <= 60) || (!isScrollToTopState() && userInputElem.value === ""));
     const isScrollToTopState = () => sendButtonElem.innerText === "⤒";
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
 
-    userInputElem.addEventListener("input", updateInputButtonText);
-    userInputElem.addEventListener("focus", updateInputButtonText);
-    userInputElem.addEventListener("blur", updateInputButtonText);
+    userInputElem.addEventListener("input", updateSendButtonText);
+    userInputElem.addEventListener("focus", updateSendButtonText);
+    userInputElem.addEventListener("blur", updateSendButtonText);
     archiveButtonElem.addEventListener("click", showArchive);
     refreshButtonElem.addEventListener("click", getInitialSuggestions);
     chatHistoryElem.addEventListener("click", () => userInputElem.blur() /*  hide the keyboard on mobile */);
     chatFormElem.addEventListener("submit", onSubmit);
-    window.addEventListener("scroll", updateInputButtonDisabled);
+    window.addEventListener("scroll", updateSendButtonDisabled);
+
+    archiveButtonElem.hidden = true;
 
     const openai_key = location.hash.slice(1) || localStorage.getItem("openai_key");
 
@@ -218,8 +225,11 @@ Clarifications, if necessary, are included in the 3 suggestions.
     }
 
     if (!openai_key) {
+      const promptOpenAIKeyMessage = 
+      "Type less (or nothing at all) and get faster results. [Read more](https://github.com/tiagosimoes/FasterChatGPT/#readme). \
+      <br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)";
       document.addEventListener("DOMContentLoaded", () => 
-        parseAndAppendAssistantMessage("Type less (or nothing at all) and get faster results. [Read more](https://github.com/tiagosimoes/FasterChatGPT/#readme).<br><br>Please enter your [OpenAI API key](https://platform.openai.com/account/api-keys)"));
+        appendAssistantMessageAndSuggestions(`{"assistantMessage": "${promptOpenAIKeyMessage}", "suggestionsForFollowUpUserPrompts": []}`));
       userInputElem.placeholder = "OpenAI API key";
       chatFormElem.removeEventListener("submit", onSubmit);
       chatFormElem.addEventListener("submit", onOpenAIKeySubmit);
@@ -232,7 +242,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       // the user has entered his OpenAI key. Save to local storage and reload the page
       event.preventDefault();
       localStorage.setItem("openai_key", userInputElem.value);
-      setTimeout(() => document.location.reload(), 1000);
+      document.location.reload();
     }
 
     function hasOptionalQParameter() {
@@ -241,21 +251,24 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const q = urlParams.get('q');
       if (q != null) {
         chatActiveHistory = [{ role: "system", content: instructions }];
-        refreshButtonElem.style.opacity = 1;
         if (q != "") {
           document.addEventListener("DOMContentLoaded", () => {
-            appendSuggestionBubbleAndGetFromAI(q, /*isUserTypedMessage*/ true);
+            appendSuggestionBubbleAndCacheAnswerFromAI(q, /*isUserTypedMessage*/ true);
             appendUserMessage(q);
           });
-          return true;
         }
+        return true;
       }
     }
 
     const storeNextInitialSuggestionsFromAIToCache = async () => // think slowly, take your time to get the next initial suggestions
-      localStorage.setItem("nextInitialSuggestions", await getInitialSuggestionsFromAI(/*thinkFast*/ false));
+      localStorage.setItem(nextInitialSuggestionsKey, await getInitialSuggestionsFromAI(/*thinkFast*/ false));
     
-    const getNextInitialSuggestionsFromCache = () => localStorage.getItem("nextInitialSuggestions");
+    function getNextInitialSuggestionsFromCache() {
+      const nextSuggestions= localStorage.getItem(nextInitialSuggestionsKey);
+      localStorage.removeItem(nextInitialSuggestionsKey);
+      return nextSuggestions;
+    }
 
     async function getInitialSuggestions() {
       chatActiveHistory = [{ role: "system", content: instructions }];
@@ -263,47 +276,24 @@ Clarifications, if necessary, are included in the 3 suggestions.
       appendBubble("thinking", "...");
       // if there is no nextInitialSuggestions in cache, get it fast from AI
       let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI(/*thinkFast*/ true);
-      // shuffle them
-      initialSuggestions = initialSuggestions.split("\n").sort(() => Math.random() - 0.5).join("\n");  
-      await parseAndAppendAssistantMessage("What do you want to explore? WHAT NEXT?" + initialSuggestions);
-      refreshButtonElem.style.opacity = 1;
+      await appendAssistantMessageAndSuggestions(initialSuggestions, /*shuffleSuggestions*/ true); //shuffling because top initial suggestions are often the same
       await storeNextInitialSuggestionsFromAIToCache();
       userInputElem.placeholder = "...or anything else (related or not)";
     }
 
     async function getInitialSuggestionsFromAI(thinkFast) {
       const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+      let initialPrompt = "";
       if (visitedInitialPrompts.length > 0){
-        archiveButtonElem.style.opacity = 1;
-        let initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialPrompts.reverse().join("\n- ") + "\n\n";
-        initialPrompt += "Now give me a list of 7 other topics I could find interesting to explore. Be very succinct. Just output the list.";
-        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }], thinkFast);
+        archiveButtonElem.hidden = false;
+        initialPrompt = "Here are some topics I've already found interesting:\n- " + visitedInitialPrompts.reverse().join("\n- ") + "\n\n";
+        initialPrompt += "Now give me a list of 7 other topics I could find interesting to explore. Be very succinct.";
       } else {
-        let initialPrompt = "Give me a list of 7 interesting topics to explore. Be very succinct. Just output the list.";
-        return await getChatCompletionFromAI([{ role: "user", content: initialPrompt }, thinkFast]);
+        initialPrompt = "Give me a list of 7 interesting topics to explore. Be very succinct.";
       }
-    }
-
-    function showArchive() {
-      const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
-      chatActiveHistory = [{ role: "system", content: instructions }];
-      chatHistoryElem.innerHTML = "";
-      appendBubble("user", "What I've explored so far:");
-      visitedInitialPrompts.reverse();
-      visitedInitialPrompts.forEach(async suggestion => {
-        var suggestionBubble = await appendSuggestionBubbleAndGetFromAI(suggestion);
-        let pressTimer;
-        // allow removing from archive by long press
-        suggestionBubble.addEventListener("touchstart", () => 
-          pressTimer = setTimeout(()  => {
-            suggestionBubble.remove();
-            const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
-            localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts.filter(item => item !== suggestion)));
-          }, 1000));
-        suggestionBubble.addEventListener("touchend", () => clearTimeout(pressTimer));
-      });
-      archiveButtonElem.style.opacity = 0;
-      refreshButtonElem.style.opacity = 1;
+      let systemMessage =systemMessageFormat.replace("\"message\"", "\"What do you want to explore?\"");
+      let messages = [{ role: "system", content: systemMessage },{ role: "user", content: initialPrompt }];
+      return await getChatCompletionFromAI(messages, thinkFast);
     }
 
     function onSubmit(event) {
@@ -311,28 +301,20 @@ Clarifications, if necessary, are included in the 3 suggestions.
       if (isScrollToTopState())
         scrollToTop();
       else {
-        appendSuggestionBubbleAndGetFromAI(userInputElem.value, /*isUserTypedMessage*/ true);
+        appendSuggestionBubbleAndCacheAnswerFromAI(userInputElem.value, /*isUserTypedMessage*/ true);
         appendUserMessage(userInputElem.value);
         clearUserInput();
       }
     }
 
-    function updateInputButtonText() {
+    function updateSendButtonText() {
       sendButtonElem.innerText = userInputElem.value === "" && document.activeElement != userInputElem ? "⤒" : "→";
-      updateInputButtonDisabled();
+      updateSendButtonDisabled();
     }
 
     function clearUserInput() {
       userInputElem.value = "";
-      updateInputButtonText();
-    }
-
-    function storeTopMessageInArchive(message) {
-      const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
-      if (!visitedInitialPrompts.includes(message))
-        visitedInitialPrompts.push(message);
-      localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts));
-      archiveButtonElem.style.opacity = 1;
+      updateSendButtonText();
     }
 
     async function appendUserMessage(userMessage) {
@@ -341,42 +323,29 @@ Clarifications, if necessary, are included in the 3 suggestions.
       chatActiveHistory.push({ role: "user", content: userMessage });
       appendBubble("user", userMessage);
       appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
-      await fetchAndDisplayAIResponse();
+      await getAIResponseFromCacheAndAppend();
     }
 
-    async function fetchAndDisplayAIResponse() {
+    async function getAIResponseFromCacheAndAppend() {
       try {
         const record = await getChatCompletionFromCache(chatActiveHistory);
-        await parseAndAppendAssistantMessage(record.message);
+        await appendAssistantMessageAndSuggestions(record.message);
         record.visited = true;
         await setDataInDB(record);
       } catch (error) {
-        parseAndAppendAssistantMessage(error.message);
+        appendAssistantMessageAndSuggestions(error.message);
       }
     }
 
-    async function parseAndAppendAssistantMessage(message) {
+    async function appendAssistantMessageAndSuggestions(message, shuffleSuggestions = false) {
       chatActiveHistory.push({ role: "assistant", content: message });
       chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
-      const [messagePart, suggestions] = parseMessageAndSuggestions(message);
-      appendBubble("assistant", messagePart).scrollIntoView({ behavior: "smooth" });
-      suggestions.forEach(async suggestion => await appendSuggestionBubbleAndGetFromAI(suggestion));
-    }
-
-    function parseMessageAndSuggestions(message) {
-      let [messagePart, rawSuggestions] = message.trim("\"").split("WHAT NEXT?");
-      if (!rawSuggestions) {
-        // sometimes the assistant doesn't write "WHAT NEXT?" and just gives the suggestions
-        const lastOne = Math.max(message.lastIndexOf("1."), message.lastIndexOf("1)"));
-        if (lastOne > 0)
-          [messagePart, rawSuggestions] = [message.slice(0, lastOne), message.slice(lastOne)];
-      }
-      // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc., and also leading hyphens (-).
-      const numberAndDot = /^-?(\d+[\.\)])?\s+/;
-      const leadingAndEndingQuotes = /^['"]|['"]$/g;
-      const suggestionsPart = !rawSuggestions ? [] : 
-        rawSuggestions.split("\n").map(s => s.replace(numberAndDot, "").replace(leadingAndEndingQuotes, '').trim()).filter(s => s != "");
-      return [messagePart.trim(), suggestionsPart];
+      const messageAndSuggestions = JSON.parse(message);
+      appendBubble("assistant", messageAndSuggestions.assistantMessage).scrollIntoView({ behavior: "smooth" });
+      const suggestions = messageAndSuggestions.suggestionsForFollowUpUserPrompts ?? [];
+      if (shuffleSuggestions)
+        suggestions.sort(() => Math.random() - 0.5);
+      suggestions.forEach(async suggestion => await appendSuggestionBubbleAndCacheAnswerFromAI(suggestion));
     }
 
     function appendBubble(role, message) {
@@ -387,7 +356,10 @@ Clarifications, if necessary, are included in the 3 suggestions.
       return newMessageElement;
     }
 
-    async function appendSuggestionBubbleAndGetFromAI(message, isUserTypedMessage = false) {
+    async function appendSuggestionBubbleAndCacheAnswerFromAI(message, isUserTypedMessage = false) {
+      // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc., and also leading hyphens (-).
+      const numberAndDot = /^-?(\d+[\.\)])?\s+/;
+      message = message.replace(numberAndDot, "");
       const suggestionBubble = appendBubble("suggestion", message);
       if (isUserTypedMessage) // if it's a typed message, add it as a suggestion but hidden, so it later can be also toggled as the others
         suggestionBubble.classList.add("hidden");
@@ -479,7 +451,7 @@ Clarifications, if necessary, are included in the 3 suggestions.
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openai_key },
-        body: JSON.stringify({ model: thinkFast? "gpt-3.5-turbo": "gpt-4", messages: previousMessagesTrimmed })
+        body: JSON.stringify({ model: thinkFast? "gpt-3.5-turbo-1106": "gpt-4-1106-preview", messages: previousMessagesTrimmed, response_format:{ "type": "json_object" } })
       });
       if (response.status === 401) {
         localStorage.removeItem("openai_key");
@@ -490,10 +462,39 @@ Clarifications, if necessary, are included in the 3 suggestions.
       return choices[0].message.content;
     }
 
+    function storeTopMessageInArchive(message) {
+      const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+      if (!visitedInitialPrompts.includes(message))
+        visitedInitialPrompts.push(message);
+      localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts));
+      archiveButtonElem.hidden = false;
+    }
+    
+    function showArchive() {
+      const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+      chatActiveHistory = [{ role: "system", content: instructions }];
+      chatHistoryElem.innerHTML = "";
+      appendBubble("user", "What I've explored so far:");
+      visitedInitialPrompts.reverse();
+      visitedInitialPrompts.forEach(async suggestion => {
+        var suggestionBubble = await appendSuggestionBubbleAndCacheAnswerFromAI(suggestion);
+        let pressTimer;
+        // allow removing from archive by long press
+        suggestionBubble.addEventListener("touchstart", () => 
+          pressTimer = setTimeout(()  => {
+            suggestionBubble.remove();
+            const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
+            localStorage.setItem("visitedInitialPrompts", JSON.stringify(visitedInitialPrompts.filter(item => item !== suggestion)));
+          }, 1000));
+        suggestionBubble.addEventListener("touchend", () => clearTimeout(pressTimer));
+      });
+      archiveButtonElem.hidden = true;
+    }
+
     async function getIndexDBStore() {
-      const tableName = "messagesV3";
+      const tableName = "messagesV" + modelVersion;
       const db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open("ChatDB", 7);
+        const request = indexedDB.open("ChatDB", modelVersion);
         request.onupgradeneeded = e => {
           if (!e.target.result.objectStoreNames.contains(tableName)) 
             e.target.result.createObjectStore(tableName, { keyPath: "key" });
