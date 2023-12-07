@@ -199,7 +199,7 @@ You should always make educated guesses.
       sendButtonElem.disabled = ((isScrollToTopState() && window.scrollY <= 60) || (!isScrollToTopState() && userInputElem.value === ""));
     const isScrollToTopState = () => sendButtonElem.innerText === "⤒";
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
-
+    const MessageType = { SYSTEM: "system", USER: "user", THINKING: "thinking", ASSISTANT: "assistant", SUGGESTION: "suggestion"};
 
     userInputElem.addEventListener("input", updateSendButtonText);
     userInputElem.addEventListener("focus", updateSendButtonText);
@@ -246,7 +246,7 @@ You should always make educated guesses.
       const urlParams = new URLSearchParams(window.location.search);
       const q = urlParams.get('q');
       if (q != null) {
-        chatActiveHistory = [{ role: "system", content: instructions }];
+        chatActiveHistory = [{ role: MessageType.SYSTEM, content: instructions }];
         if (q != "") {
           document.addEventListener("DOMContentLoaded", () => {
             appendSuggestionBubbleAndCacheAnswerFromAI(q, /*isUserTypedMessage*/ true);
@@ -267,9 +267,9 @@ You should always make educated guesses.
     }
 
     async function getInitialSuggestions() {
-      chatActiveHistory = [{ role: "system", content: instructions }];
+      chatActiveHistory = [{ role: MessageType.SYSTEM, content: instructions }];
       chatHistoryElem.innerHTML = "";
-      appendBubble("thinking", "...");
+      appendBubble(MessageType.THINKING, "...");
       // if there is no nextInitialSuggestions in cache, get it fast from AI
       let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI(/*thinkFast*/ true);
       await appendAssistantMessageAndSuggestions(initialSuggestions, /*shuffleSuggestions*/ true); //shuffling because top initial suggestions are often the same
@@ -288,7 +288,7 @@ You should always make educated guesses.
         initialPrompt = "Give me a list of 7 interesting topics to explore. Be very succinct.";
       }
       let systemMessage =systemMessageFormat.replace("\"message\"", "\"What do you want to explore?\"");
-      let messages = [{ role: "system", content: systemMessage },{ role: "user", content: initialPrompt }];
+      let messages = [{ role: MessageType.SYSTEM, content: systemMessage },{ role: MessageType.USER, content: initialPrompt }];
       return await getChatCompletionFromAI(messages, thinkFast);
     }
 
@@ -314,11 +314,11 @@ You should always make educated guesses.
     }
 
     async function appendUserMessage(userMessage) {
-      if (document.querySelectorAll(".user").length == 0)
+      if (document.querySelectorAll("." + MessageType.USER).length == 0)
         storeTopMessageInArchive(userMessage);
-      chatActiveHistory.push({ role: "user", content: userMessage });
-      appendBubble("user", userMessage);
-      appendBubble("thinking", "...").scrollIntoView({ behavior: "smooth" });
+      chatActiveHistory.push({ role: MessageType.USER, content: userMessage });
+      appendBubble(MessageType.USER, userMessage);
+      appendBubble(MessageType.THINKING, "...").scrollIntoView({ behavior: "smooth" });
       await getAIResponseFromCacheAndAppend();
     }
 
@@ -334,10 +334,10 @@ You should always make educated guesses.
     }
 
     async function appendAssistantMessageAndSuggestions(message, shuffleSuggestions = false) {
-      chatActiveHistory.push({ role: "assistant", content: message });
+      chatActiveHistory.push({ role: MessageType.ASSISTANT, content: message });
       chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
       const messageAndSuggestions = JSON.parse(message);
-      appendBubble("assistant", messageAndSuggestions.assistantMessage).scrollIntoView({ behavior: "smooth" });
+      appendBubble(MessageType.ASSISTANT, messageAndSuggestions.assistantMessage).scrollIntoView({ behavior: "smooth" });
       const suggestions = messageAndSuggestions.suggestionsForFollowUpUserPrompts ?? [];
       if (shuffleSuggestions)
         suggestions.sort(() => Math.random() - 0.5);
@@ -356,12 +356,12 @@ You should always make educated guesses.
       // Regular expression to match the leading numbers and period or a parenthesis 1. 2. 3. or 1) 2) 3) etc., and also leading hyphens (-).
       const numberAndDot = /^-?(\d+[\.\)])?\s+/;
       message = message.replace(numberAndDot, "");
-      const suggestionBubble = appendBubble("suggestion", message);
+      const suggestionBubble = appendBubble(MessageType.SUGGESTION, message);
       if (isUserTypedMessage) // if it's a typed message, add it as a suggestion but hidden, so it later can be also toggled as the others
         suggestionBubble.classList.add("hidden");
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
       let possibleNewChatHistory = [...chatActiveHistory];
-      possibleNewChatHistory.push({ role: "user", content: message });
+      possibleNewChatHistory.push({ role: MessageType.USER, content: message });
       // if the user as put in his time to type a message, we'll also do that
       const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory, /*thinkOnlySlowly*/ isUserTypedMessage);
       if (record.visited) // gray out visited messages
@@ -380,7 +380,7 @@ You should always make educated guesses.
       // hide this one, and remove all messages below it, so the user continue the conversation from this different place
       function showSiblingSuggestions(startBubble, direction) {
         let sibling = startBubble[direction];
-        while (sibling && sibling.classList.contains("suggestion")) {
+        while (sibling && sibling.classList.contains(MessageType.SUGGESTION)) {
           if (sibling.classList.contains("hidden")) {
             sibling.classList.remove("hidden");
             sibling.classList.add("visited");
@@ -399,7 +399,7 @@ You should always make educated guesses.
       let userMessagegDeleted = 0;
       while (nextSibling) {
         let storeNextSibling = nextSibling.nextSibling;
-        if (nextSibling.classList.contains("user"))
+        if (nextSibling.classList.contains(MessageType.USER))
           userMessagegDeleted++;
         nextSibling.remove();
         nextSibling = storeNextSibling;
@@ -408,7 +408,7 @@ You should always make educated guesses.
         chatActiveHistory = chatActiveHistory.toSpliced(- userMessagegDeleted * 2);
     }
 
-    const getAllPreviousUserMessages = (previousMessages) => previousMessages.filter(m => m.role === "user").map(m => m.content).join(historySeparator);
+    const getAllPreviousUserMessages = (previousMessages) => previousMessages.filter(m => m.role === MessageType.USER).map(m => m.content).join(historySeparator);
 
     async function storeChatCompletionFromAIToCache(previousMessages, thinkOnlySlowly = false) {
       const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
@@ -468,9 +468,9 @@ You should always make educated guesses.
     
     function showArchive() {
       const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
-      chatActiveHistory = [{ role: "system", content: instructions }];
+      chatActiveHistory = [{ role: MessageType.SYSTEM, content: instructions }];
       chatHistoryElem.innerHTML = "";
-      appendBubble("user", "What I've explored so far:");
+      appendBubble(MessageType.USER, "What I've explored so far:");
       visitedInitialPrompts.reverse();
       visitedInitialPrompts.forEach(async suggestion => {
         var suggestionBubble = await appendSuggestionBubbleAndCacheAnswerFromAI(suggestion);
