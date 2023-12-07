@@ -33,6 +33,8 @@ You need to experience it to "get it" 👉 https://tiagosimoes.github.io/FasterC
 
 NOTE: Sorry, but you'll need your own [OpenAI API key](https://platform.openai.com/account/api-keys), otherwise, if this project would become viral, I would go bankrupt.
 
+TIP: If you do need to type something, try typing a few words, like if you were Googling, instead of carefully crafting a complete sentence like you would in ChatGPT. 
+
 ## How does it work?
 It's all client-side, in just a single HTML file https://github.com/tiagosimoes/FasterChatGPT/blob/main/index.html, if you know a bit of JavaScript you'll grok it.
 
