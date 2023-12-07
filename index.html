@@ -157,13 +157,9 @@
     }
     #chatForm {
       padding: 10px;
+      padding-bottom: calc(max(env(safe-area-inset-bottom), 10px));
     }
 
-    @media (display-mode: standalone) {
-      #chatForm {
-        padding-bottom: 40px!important;
-      } 
-    }  
   </style>
   <script>
     const modelVersion = 9;
