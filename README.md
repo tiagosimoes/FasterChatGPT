@@ -43,7 +43,7 @@ It amazes me that it's possible to create a complete and very useful app with th
 <br><br><br>
 
 #### P.S. To the OpenAI folks
-I love you ❤️! You have the best API in the world. Feel free to take any of this, so you can also make the best app in the world.
+I love you ❤️! You have the best API in the world. Feel free to take any of this, so you can also make the best app in the world. If anyone can make this to scale to millions of users in a cost effective way, it's you. 
 
 #### P.P.S. Why is *Faster ChatGPT* italicized?
 Because it's *fast*.
