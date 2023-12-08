@@ -29,7 +29,7 @@ Quoting myself, so that I can feel smarter:
 > If an "AI" system does not give contextual suggestions to its users, then that "AI" system does not have enough "I". And if it is slow doing it... then it has a slow "I". 
 
 ## You need to try it!
-You need to experience the speed to "get it" 👉 https://tiagosimoes.github.io/FasterChatGPT/
+You need to experience the speed to "get" it 👉 https://tiagosimoes.github.io/FasterChatGPT/
 
 NOTE: Sorry, but you'll need your own [OpenAI API key](https://platform.openai.com/account/api-keys), otherwise, if this project would become viral, I would go bankrupt.
 
