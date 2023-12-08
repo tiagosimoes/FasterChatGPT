@@ -3,6 +3,7 @@
 
 <head>
   <title>Faster ChatGPT</title>
+  <meta charset="utf-8">
   <meta name="description" content="Type less (or nothing at all) and get faster results.">
   <meta property="og:title" content="Faster ChatGPT" />
   <meta property="og:description" content="Type less (or nothing at all) and get faster results." />
@@ -37,9 +38,10 @@
     :root {
       --primary-color: hsl(180, 66%, 21%);
       --secondary-color: hsl(180, 70%, 20%);
-      --assistant-background: hsl(180, 19%, 93%);
-      --assistant-forground: hsl(180, 11%, 25%);
-      --suggestion-background: hsl(180, 19%, 97%);
+      --assistant-background: hsl(180, 19%, 91%);
+      --assistant-thinking: hsl(180, 4%, 38%);
+      --assistant-thinking-more: hsl(180, 4%, 18%);
+      --suggestion-background: hsl(180, 19%, 94%);
       --visited-color: hsl(180, 7%, 25%);
       --background-color: hsl(180, 66%, 98%);
     }
@@ -90,6 +92,7 @@
       animation: grow .2s forwards;
       margin-bottom: 0;
       word-wrap: break-word;
+      transition: all .2s;
     }
 
     .user {
@@ -110,10 +113,8 @@
       border-bottom-right-radius: 0px;
     }
 
-    .thinking,
     .assistant {
       background-color: var(--assistant-background);
-      color: var(--assistant-forgroundr);
     }
 
     .suggestion {
@@ -125,7 +126,6 @@
       margin: 10px auto;
       border-bottom-right-radius: 10px;
       margin-bottom: 0;
-      background-color: rgb(240, 240, 240);
       animation: appear 2s forward;
       user-select: none;
       -webkit-user-select: none;
@@ -146,6 +146,31 @@
       animation: grow .5s infinite alternate;
     }
 
+    .assistant {
+      color:  var(--assistant-thinking-more);
+    }
+    
+    .thinking,
+    .assistant.thinkingMore,
+    .assistant.thoughtMore  {
+      color: var(--assistant-thinking);
+      background-color: var(--suggestion-background);
+    }
+
+    .assistant.thinkingMore:before,
+    .assistant.thoughtMore:before {
+      content: "↻";
+      position: absolute;
+      margin-left: -30px;
+      color: var(--primary-color);
+      opacity: 0;
+      transition: opacity .5s;
+      font-size: small;
+    }
+    .assistant.thoughtMore:before {
+      opacity: 1;
+    }
+
     @keyframes grow {
       from {
         transform: scale(0);
@@ -162,11 +187,11 @@
 
   </style>
   <script>
-    const modelVersion = 9;
+    const modelVersion = 10;
     const systemMessageFormat = `Output JSON, in the format {"assistantMessage": "message", "suggestionsForFollowUpUserPrompts": ["suggestion1", "suggestion2", "suggestion3"]}`;
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for follow up user prompts. 
-You should always make educated guesses. 
+You should always make educated guesses and you should always provide suggestions for follow up user prompts. 
 ` + systemMessageFormat;
 
   const firstInitialSuggestions = `{"assistantMessage": "What do you want to explore?", "suggestionsForFollowUpUserPrompts": [
@@ -319,13 +344,15 @@ You should always make educated guesses.
       chatActiveHistory.push({ role: MessageType.USER, content: userMessage });
       appendBubble(MessageType.USER, userMessage);
       appendBubble(MessageType.THINKING, "...").scrollIntoView({ behavior: "smooth" });
-      await getAIResponseFromCacheAndAppend();
+      await getResponseFromCacheAndAppend();
     }
 
-    async function getAIResponseFromCacheAndAppend() {
+    async function getResponseFromCacheAndAppend() {
       try {
         const record = await getChatCompletionFromCache(chatActiveHistory);
-        await appendAssistantMessageAndSuggestions(record.message);
+        const assistantBubble = await appendAssistantMessageAndSuggestions(record.smarterMessage ?? record.message);
+        if (!record.smarterMessage) 
+          assistantBubble.classList.add("thinkingMore");
         record.visited = true;
         await setDataInDB(record);
       } catch (error) {
@@ -337,11 +364,13 @@ You should always make educated guesses.
       chatActiveHistory.push({ role: MessageType.ASSISTANT, content: message });
       chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
       const messageAndSuggestions = JSON.parse(message);
-      appendBubble(MessageType.ASSISTANT, messageAndSuggestions.assistantMessage).scrollIntoView({ behavior: "smooth" });
+      const assistantBubble = appendBubble(MessageType.ASSISTANT, messageAndSuggestions.assistantMessage)
+      assistantBubble.scrollIntoView({ behavior: "smooth" });
       const suggestions = messageAndSuggestions.suggestionsForFollowUpUserPrompts ?? [];
       if (shuffleSuggestions)
         suggestions.sort(() => Math.random() - 0.5);
       suggestions.forEach(async suggestion => await appendSuggestionBubbleAndCacheAnswerFromAI(suggestion));
+      return assistantBubble;
     }
 
     function appendBubble(role, message) {
@@ -362,8 +391,7 @@ You should always make educated guesses.
       suggestionBubble.addEventListener("click", () => onSuggestionClick(suggestionBubble, message));
       let possibleNewChatHistory = [...chatActiveHistory];
       possibleNewChatHistory.push({ role: MessageType.USER, content: message });
-      // if the user as put in his time to type a message, we'll also do that
-      const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory, /*thinkOnlySlowly*/ isUserTypedMessage);
+      const record = await storeChatCompletionFromAIToCache(possibleNewChatHistory);
       if (record.visited) // gray out visited messages
         suggestionBubble.classList.add("visited"); 
       return suggestionBubble;
@@ -373,6 +401,7 @@ You should always make educated guesses.
       // when clicking on a suggestion, toggle it with the selected one, if there is one
       showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble);
       await appendUserMessage(message);
+      chatHistoryElem.style.paddingBottom = "";
     }
 
     function showSiblingSuggestionsAndRemoveAllMessagesToBottom(suggestionBubble) {
@@ -410,26 +439,59 @@ You should always make educated guesses.
 
     const getAllPreviousUserMessages = (previousMessages) => previousMessages.filter(m => m.role === MessageType.USER).map(m => m.content).join(historySeparator);
 
-    async function storeChatCompletionFromAIToCache(previousMessages, thinkOnlySlowly = false) {
+    async function storeChatCompletionFromAIToCache(previousMessages) {
       const allPreviousUserMessages = getAllPreviousUserMessages(previousMessages);
       let record = await getDataFromDB(allPreviousUserMessages);
       if (record)
         return record;
-      if (!thinkOnlySlowly){
-        // thinking fast
-        message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
-        record = { key: allPreviousUserMessages, message: message, visited: false };
-        await setDataInDB(record);
-      }
+      // thinking fast
+      message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
+      record = { key: allPreviousUserMessages, message: message, visited: false };
+      await setDataInDB(record);
       // thinking slow
       message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ false);
-      record = await getDataFromDB(allPreviousUserMessages) ?? { key: allPreviousUserMessages, message: message, visited: false };
-
-      if(!record.visited) {  // if you have already talked, don't take it back :)
-        record = { key: allPreviousUserMessages, message: message, visited: false };
-        await setDataInDB(record);
+      //get the record again to check if it was visited in the meantime
+      record = await getDataFromDB(allPreviousUserMessages);
+      if(record.visited) { 
+        // allow the user to refresh the message with GPT4
+        addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, record.message);
       }      
+      record = { key: allPreviousUserMessages, message: record.message, smarterMessage: message, visited: false};
+      await setDataInDB(record);
       return record;
+    }
+
+    function addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, message) {
+      const detph = allPreviousUserMessages.split(historySeparator).length;
+      const lastMessage = allPreviousUserMessages.split(historySeparator).at(-1);
+      const answers = document.querySelectorAll(".assistant");
+      if (answers.length >= detph) {
+        const answer = answers[detph];
+        if (answer.innerText.trim() === JSON.parse(message).assistantMessage.trim()) {
+          answer.classList.remove("thinkingMore");
+          answer.classList.add("thoughtMore");
+          answer.addEventListener("click", onAnswerRefreshToChatGPT4Click);   
+        }
+      }
+    }
+
+    function onAnswerRefreshToChatGPT4Click(e) {
+      let previousSibling = e.target.previousElementSibling;
+      // find the previous suggestion bubble that is hidden and click it to refresh with GPT4
+      while (previousSibling && 
+        !(previousSibling.classList.contains(MessageType.SUGGESTION) 
+          && previousSibling.classList.contains("hidden") )) {
+        previousSibling = previousSibling.previousElementSibling;
+      }
+      // to avoid scrolling, let's temporarily add a lot of padding to the chat history
+      chatHistoryElem.style.paddingBottom = "800px";
+      previousSibling.dispatchEvent(new Event("click"));
+      showMessageOnPlaceholder("refreshed with GPT4");
+    }
+
+    function showMessageOnPlaceholder(message) {
+      userInputElem.placeholder = message;
+      setTimeout(() => userInputElem.placeholder = "...or anything else (related or not)", 1500);
     }
 
     async function getChatCompletionFromCache(previousMessages) {
