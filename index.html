@@ -39,9 +39,10 @@
       --primary-color: hsl(180, 66%, 21%);
       --secondary-color: hsl(180, 70%, 20%);
       --assistant-background: hsl(180, 19%, 91%);
-      --assistant-thinking: hsl(180, 4%, 38%);
-      --assistant-thinking-more: hsl(180, 4%, 18%);
-      --suggestion-background: hsl(180, 19%, 94%);
+      --assistant-thinking: hsl(180, 4%, 28%);
+      --assistant-smarter: hsl(180, 4%, 15%);
+      --assistant-thinking-background: hsl(180, 32%, 93%);
+      --suggestion-background: hsl(180, 15%, 94%);
       --visited-color: hsl(180, 7%, 25%);
       --background-color: hsl(180, 66%, 98%);
     }
@@ -87,7 +88,6 @@
       padding: 10px;
       margin: 10px auto;
       width: fit-content;
-      max-width: 90%;
       max-width: 80%;
       animation: grow .2s forwards;
       margin-bottom: 0;
@@ -106,8 +106,6 @@
     .assistant,
     .thinking,
     .suggestion {
-      background-color: var(--suggestion-background);
-      color: #000000dd;
       margin-right: 20px;
       transform-origin: top right;
       border-bottom-right-radius: 0px;
@@ -115,9 +113,11 @@
 
     .assistant {
       background-color: var(--assistant-background);
+      color:  var(--assistant-smarter);
     }
 
     .suggestion {
+      background-color: var(--suggestion-background);
       cursor: pointer;
       color: var(--secondary-color);
       font-size: 16px;
@@ -131,6 +131,15 @@
       -webkit-user-select: none;
     }
 
+    .suggestion,
+    #sendButton {
+      box-shadow: 1px 1px 2px #999999aa;
+    }
+
+    #sendButton:active {
+      transform: translate(1px, 1px);
+    }
+
     .suggestion.hidden {
       margin-top: 0;
       margin-bottom: 0;
@@ -142,19 +151,15 @@
       color: var(--visited-color);
     }
 
-    .thinking>p {
+    .thinking > p {
       animation: grow .5s infinite alternate;
     }
 
-    .assistant {
-      color:  var(--assistant-thinking-more);
-    }
-    
     .thinking,
     .assistant.thinkingMore,
     .assistant.thoughtMore  {
       color: var(--assistant-thinking);
-      background-color: var(--suggestion-background);
+      background-color: var(--assistant-thinking-background);
     }
 
     .assistant.thinkingMore:before,
@@ -167,8 +172,9 @@
       transition: opacity .5s;
       font-size: small;
     }
+
     .assistant.thoughtMore:before {
-      opacity: 1;
+      opacity: .5;
     }
 
     @keyframes grow {
@@ -187,7 +193,7 @@
 
   </style>
   <script>
-    const modelVersion = 10;
+    const modelVersion = 11;
     const systemMessageFormat = `Output JSON, in the format {"assistantMessage": "message", "suggestionsForFollowUpUserPrompts": ["suggestion1", "suggestion2", "suggestion3"]}`;
     const instructions = `
 You are a direct, clear and fast GPT designed to offer very concise (non creative) answers with one or two sentences and then 3 suggestions for follow up user prompts. 
@@ -268,6 +274,8 @@ You should always make educated guesses and you should always provide suggestion
 
     function hasOptionalQParameter() {
       // e.g. to integrate this with workflows like Alfred, you can pass a q parameter in the URL
+      // or just to create a shortcut key in windows or mac that opens https://tiagosimoes.github.io/FasterChatGPT/?q=
+      // (I couldn't find a way to pop up the keyboard on iOS Safari, though)
       const urlParams = new URLSearchParams(window.location.search);
       const q = urlParams.get('q');
       if (q != null) {
@@ -350,8 +358,8 @@ You should always make educated guesses and you should always provide suggestion
     async function getResponseFromCacheAndAppend() {
       try {
         const record = await getChatCompletionFromCache(chatActiveHistory);
-        const assistantBubble = await appendAssistantMessageAndSuggestions(record.smarterMessage ?? record.message);
-        if (!record.smarterMessage) 
+        const assistantBubble = await appendAssistantMessageAndSuggestions(record.smarterMessageJSON ?? record.messageJSON);
+        if (!record.smarterMessageJSON) 
           assistantBubble.classList.add("thinkingMore");
         record.visited = true;
         await setDataInDB(record);
@@ -360,10 +368,10 @@ You should always make educated guesses and you should always provide suggestion
       }
     }
 
-    async function appendAssistantMessageAndSuggestions(message, shuffleSuggestions = false) {
-      chatActiveHistory.push({ role: MessageType.ASSISTANT, content: message });
+    async function appendAssistantMessageAndSuggestions(messageJSON, shuffleSuggestions = false) {
+      chatActiveHistory.push({ role: MessageType.ASSISTANT, content: messageJSON });
       chatHistoryElem.lastElementChild?.remove(); // remove the thinking message, if there is one
-      const messageAndSuggestions = JSON.parse(message);
+      const messageAndSuggestions = JSON.parse(messageJSON);
       const assistantBubble = appendBubble(MessageType.ASSISTANT, messageAndSuggestions.assistantMessage)
       assistantBubble.scrollIntoView({ behavior: "smooth" });
       const suggestions = messageAndSuggestions.suggestionsForFollowUpUserPrompts ?? [];
@@ -445,29 +453,29 @@ You should always make educated guesses and you should always provide suggestion
       if (record)
         return record;
       // thinking fast
-      message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
-      record = { key: allPreviousUserMessages, message: message, visited: false };
+      messageJSON = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
+      record = { key: allPreviousUserMessages, messageJSON: messageJSON, visited: false };
       await setDataInDB(record);
       // thinking slow
-      message = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ false);
+      smarterMessageJSON = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ false);
       //get the record again to check if it was visited in the meantime
       record = await getDataFromDB(allPreviousUserMessages);
       if(record.visited) { 
         // allow the user to refresh the message with GPT4
-        addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, record.message);
+        addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, record.messageJSON);
       }      
-      record = { key: allPreviousUserMessages, message: record.message, smarterMessage: message, visited: false};
+      record = { key: allPreviousUserMessages, messageJSON: record.messageJSON, smarterMessageJSON: smarterMessageJSON, visited: false};
       await setDataInDB(record);
       return record;
     }
 
-    function addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, message) {
+    function addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, messageJSON) {
       const detph = allPreviousUserMessages.split(historySeparator).length;
       const lastMessage = allPreviousUserMessages.split(historySeparator).at(-1);
       const answers = document.querySelectorAll(".assistant");
       if (answers.length >= detph) {
         const answer = answers[detph];
-        if (answer.innerText.trim() === JSON.parse(message).assistantMessage.trim()) {
+        if (answer.innerText.trim() === JSON.parse(messageJSON).assistantMessage.trim()) {
           answer.classList.remove("thinkingMore");
           answer.classList.add("thoughtMore");
           answer.addEventListener("click", onAnswerRefreshToChatGPT4Click);   
