@@ -14,19 +14,16 @@ Like these:
 Some of them are particularly painful on mobile, and that's what *Faster ChatGPT* tries to address.
 
 ## How is *Faster ChatGPT* better?
-- **It always gives suggestions!**
+- **It always gives suggestions**
   - So you don't have to type or think so much.
-- **It gives short answers!**
+- **It gives short answers**
   - That you can expand through suggestions.
-- **It's blazing fast!**
+- **It's blazing fast**
   - It tries to always be one step ahead of you, pre-fetching stuff.
-- **It (smartly) decides between thinking fast and slow!**
+- **It (smartly) decides between thinking fast and slow**
   - It constantly adapts to you: when you're speed reading, you'll get fast results; if you're going a bit more slowly, you'll get smarter results. This will subtly keep you in a state of flow.
-- **It becomes smarter as you use it!**
+- **It becomes smarter as you use it**
   - The more you use it, the better the initial suggestions will be.
-
-Quoting myself, so that I can feel smarter:
-> If an "AI" system does not give contextual suggestions to its users, then that "AI" system does not have enough "I". And if it is slow doing it... then it has a slow "I". 
 
 ## You need to try it!
 You need to experience the speed to "get" it 👉 https://tiagosimoes.github.io/FasterChatGPT/
@@ -37,8 +34,6 @@ TIP: If you do need to type something, try typing a few words, like if you were 
 
 ## How does it work?
 It's all client-side, in just a single HTML file https://github.com/tiagosimoes/FasterChatGPT/blob/main/index.html, if you know a bit of JavaScript you'll grok it.
-
-It amazes me that it's possible to create a complete and very useful app with these few lines of code. 
 
 <br><br><br>
 
