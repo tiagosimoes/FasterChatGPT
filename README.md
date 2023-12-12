@@ -32,6 +32,8 @@ NOTE: Sorry, but you'll need your own [OpenAI API key](https://platform.openai.c
 
 TIP: If you do need to type something, try typing a few words, like if you were Googling, instead of carefully crafting a complete sentence, like you would in ChatGPT. BTW, this still doesn't browse the web (in my experience it makes it too slow). 
 
+https://github.com/tiagosimoes/FasterChatGPT/assets/7019226/68d6b3cd-1615-43c2-bf88-314dc18ec098
+
 ## How does it work?
 It's all client-side, in just a single HTML file https://github.com/tiagosimoes/FasterChatGPT/blob/main/index.html, if you know a bit of JavaScript you'll grok it.
 
