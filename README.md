@@ -31,7 +31,6 @@ You need to experience the speed to "get" it 👉 https://tiagosimoes.github.io/
 NOTE: Sorry, but you'll need your own [OpenAI API key](https://platform.openai.com/account/api-keys), otherwise, if this project would become viral, I would go bankrupt.
 
 TIP: If you do need to type something, try typing a few words, like if you were Googling, instead of carefully crafting a complete sentence, like you would in ChatGPT. BTW, this still doesn't browse the web (in my experience it makes it too slow). 
-886 × 1920
 
 <video width="443" height="960" src="https://github.com/tiagosimoes/FasterChatGPT/assets/7019226/68d6b3cd-1615-43c2-bf88-314dc18ec098"></video>
 
