@@ -37,7 +37,7 @@
   <style>
     :root {
       --primary-color: hsl(180, 66%, 21%);
-      --secondary-color: hsl(180, 70%, 20%);
+      --secondary-color: hsl(180, 72%, 15%);
       --assistant-background: hsl(180, 19%, 91%);
       --assistant-thinking: hsl(180, 4%, 28%);
       --assistant-smarter: hsl(180, 4%, 15%);
@@ -120,7 +120,6 @@
       background-color: var(--suggestion-background);
       cursor: pointer;
       color: var(--secondary-color);
-      font-size: 16px;
       opacity: .7;
       transition: all .2s;
       margin: 10px auto;
@@ -517,7 +516,7 @@ You should always make educated guesses and you should always provide suggestion
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openai_key },
-        body: JSON.stringify({ model: thinkFast? "gpt-3.5-turbo-1106": "gpt-4-1106-preview", messages: previousMessagesTrimmed, response_format:{ "type": "json_object" } })
+        body: JSON.stringify({ model: thinkFast? "gpt-4o-mini": "gpt-4o", messages: previousMessagesTrimmed, response_format:{ "type": "json_object" } })
       });
       if (response.status === 401) {
         localStorage.removeItem("openai_key");
