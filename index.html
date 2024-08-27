@@ -144,6 +144,7 @@
       margin-bottom: 0;
       font-size: 0;
       padding: 0;
+      box-shadow: 0px 0px 0px #999999aa;
     }
 
     .suggestion.visited {
@@ -199,19 +200,19 @@ You are a direct, clear and fast GPT designed to offer very concise (non creativ
 You should always make educated guesses and you should always provide suggestions for follow up user prompts. 
 ` + systemMessageFormat;
 
-  const firstInitialSuggestions = `{"assistantMessage": "What do you want to explore?", "suggestionsForFollowUpUserPrompts": [
-"Artificial intelligence and its ethical implications",
-"The future of sustainable energy sources",
-"The impact of social media on society",
-"The potential for life beyond Earth",
-"The psychology behind decision-making",
-"The role of genetics in human health and behavior",
-"The influence of technology on human relationships"
-]}`;
+//   const firstInitialSuggestions = `{"assistantMessage": "What do you want to explore?", "suggestionsForFollowUpUserPrompts": [
+// "Artificial intelligence and its ethical implications",
+// "The future of sustainable energy sources",
+// "The impact of social media on society",
+// "The potential for life beyond Earth",
+// "The psychology behind decision-making",
+// "The role of genetics in human health and behavior",
+// "The influence of technology on human relationships"
+// ]}`;
 
     const nextInitialSuggestionsKey = "nextInitialSuggestionsV" + modelVersion;
-    if (!localStorage.getItem(nextInitialSuggestionsKey))
-      localStorage.setItem(nextInitialSuggestionsKey, firstInitialSuggestions); // to make the very first initial load faster
+    // if (!localStorage.getItem(nextInitialSuggestionsKey))
+    //   localStorage.setItem(nextInitialSuggestionsKey, firstInitialSuggestions); // to make the very first initial load faster
     let chatActiveHistory = [];
     const historySeparator = "--->";
     const getById = id => document.getElementById(id);
@@ -290,7 +291,7 @@ You should always make educated guesses and you should always provide suggestion
     }
 
     const storeNextInitialSuggestionsFromAIToCache = async () => // think slowly, take your time to get the next initial suggestions
-      localStorage.setItem(nextInitialSuggestionsKey, await getInitialSuggestionsFromAI(/*thinkFast*/ false));
+      localStorage.setItem(nextInitialSuggestionsKey, await getInitialSuggestionsFromAI(/*thinkFast*/ /*false*/));
     
     function getNextInitialSuggestionsFromCache() {
       const nextSuggestions= localStorage.getItem(nextInitialSuggestionsKey);
@@ -303,13 +304,13 @@ You should always make educated guesses and you should always provide suggestion
       chatHistoryElem.innerHTML = "";
       appendBubble(MessageType.THINKING, "...");
       // if there is no nextInitialSuggestions in cache, get it fast from AI
-      let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI(/*thinkFast*/ true);
+      let initialSuggestions = getNextInitialSuggestionsFromCache() || await getInitialSuggestionsFromAI(/*thinkFast*/ /*true*/);
       await appendAssistantMessageAndSuggestions(initialSuggestions, /*shuffleSuggestions*/ true); //shuffling because top initial suggestions are often the same
       userInputElem.placeholder = "...or anything else (related or not)";
       await storeNextInitialSuggestionsFromAIToCache();
     }
 
-    async function getInitialSuggestionsFromAI(thinkFast) {
+    async function getInitialSuggestionsFromAI(/*thinkFast*/) {
       const visitedInitialPrompts = JSON.parse(localStorage.getItem("visitedInitialPrompts")) || [];
       let initialPrompt = "";
       if (visitedInitialPrompts.length > 0){
@@ -321,7 +322,7 @@ You should always make educated guesses and you should always provide suggestion
       }
       let systemMessage =systemMessageFormat.replace("\"message\"", "\"What do you want to explore?\"");
       let messages = [{ role: MessageType.SYSTEM, content: systemMessage },{ role: MessageType.USER, content: initialPrompt }];
-      return await getChatCompletionFromAI(messages, thinkFast);
+      return await getChatCompletionFromAI(messages/*, thinkFast*/);
     }
 
     function onSubmit(event) {
@@ -452,49 +453,49 @@ You should always make educated guesses and you should always provide suggestion
       if (record)
         return record;
       // thinking fast
-      messageJSON = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ true);
+      messageJSON = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ /*true*/);
       record = { key: allPreviousUserMessages, messageJSON: messageJSON, visited: false };
       await setDataInDB(record);
       // thinking slow
-      smarterMessageJSON = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ false);
+      // smarterMessageJSON = await getChatCompletionFromAI(previousMessages, /*thinkFast*/ false);
       //get the record again to check if it was visited in the meantime
       record = await getDataFromDB(allPreviousUserMessages);
-      if(record.visited) { 
-        // allow the user to refresh the message with GPT4
-        addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, record.messageJSON);
-      }      
+      // if(record.visited) { 
+      //   // allow the user to refresh the message with GPT4
+      //   addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, record.messageJSON);
+      // }      
       record = { key: allPreviousUserMessages, messageJSON: record.messageJSON, smarterMessageJSON: smarterMessageJSON, visited: false};
       await setDataInDB(record);
       return record;
     }
 
-    function addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, messageJSON) {
-      const detph = allPreviousUserMessages.split(historySeparator).length;
-      const lastMessage = allPreviousUserMessages.split(historySeparator).at(-1);
-      const answers = document.querySelectorAll(".assistant");
-      if (answers.length >= detph) {
-        const answer = answers[detph];
-        if (answer.innerText.trim() === JSON.parse(messageJSON).assistantMessage.trim()) {
-          answer.classList.remove("thinkingMore");
-          answer.classList.add("thoughtMore");
-          answer.addEventListener("click", onAnswerRefreshToChatGPT4Click);   
-        }
-      }
-    }
+    // function addRefreshToGPT4ToAssistantMessage(allPreviousUserMessages, messageJSON) {
+    //   const detph = allPreviousUserMessages.split(historySeparator).length;
+    //   const lastMessage = allPreviousUserMessages.split(historySeparator).at(-1);
+    //   const answers = document.querySelectorAll(".assistant");
+    //   if (answers.length >= detph) {
+    //     const answer = answers[detph];
+    //     if (answer.innerText.trim() === JSON.parse(messageJSON).assistantMessage.trim()) {
+    //       answer.classList.remove("thinkingMore");
+    //       answer.classList.add("thoughtMore");
+    //       answer.addEventListener("click", onAnswerRefreshToChatGPT4Click);   
+    //     }
+    //   }
+    // }
 
-    function onAnswerRefreshToChatGPT4Click(e) {
-      let previousSibling = e.target.previousElementSibling;
-      // find the previous suggestion bubble that is hidden and click it to refresh with GPT4
-      while (previousSibling && 
-        !(previousSibling.classList.contains(MessageType.SUGGESTION) 
-          && previousSibling.classList.contains("hidden") )) {
-        previousSibling = previousSibling.previousElementSibling;
-      }
-      // to avoid scrolling, let's temporarily add a lot of padding to the chat history
-      chatHistoryElem.style.paddingBottom = "800px";
-      previousSibling.dispatchEvent(new Event("click"));
-      showMessageOnPlaceholder("refreshed with GPT4");
-    }
+    // function onAnswerRefreshToChatGPT4Click(e) {
+    //   let previousSibling = e.target.previousElementSibling;
+    //   // find the previous suggestion bubble that is hidden and click it to refresh with GPT4
+    //   while (previousSibling && 
+    //     !(previousSibling.classList.contains(MessageType.SUGGESTION) 
+    //       && previousSibling.classList.contains("hidden") )) {
+    //     previousSibling = previousSibling.previousElementSibling;
+    //   }
+    //   // to avoid scrolling, let's temporarily add a lot of padding to the chat history
+    //   chatHistoryElem.style.paddingBottom = "800px";
+    //   previousSibling.dispatchEvent(new Event("click"));
+    //   showMessageOnPlaceholder("refreshed with GPT4");
+    // }
 
     function showMessageOnPlaceholder(message) {
       userInputElem.placeholder = message;
@@ -510,13 +511,13 @@ You should always make educated guesses and you should always provide suggestion
       return record;
     }
     
-    async function getChatCompletionFromAI(previousMessages, thinkFast) {
+    async function getChatCompletionFromAI(previousMessages/*, thinkFast*/) {
       // send just the instructions + the last 6 messages (to save tokens, AKA time and money)
       const previousMessagesTrimmed = (previousMessages.length > 7) ? [previousMessages[0], ...previousMessages.slice(-6)] : [...previousMessages];
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + openai_key },
-        body: JSON.stringify({ model: thinkFast? "gpt-4o-mini": "gpt-4o", messages: previousMessagesTrimmed, response_format:{ "type": "json_object" } })
+        body: JSON.stringify({ model: /*!thinkFast? "gpt-4o":*/ "gpt-4o-mini", messages: previousMessagesTrimmed, response_format:{ "type": "json_object" } })
       });
       if (response.status === 401) {
         localStorage.removeItem("openai_key");
