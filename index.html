@@ -155,27 +155,11 @@
       animation: grow .5s infinite alternate;
     }
 
-    .thinking,
-    .assistant.thinkingMore,
-    .assistant.thoughtMore  {
+    .thinking  {
       color: var(--assistant-thinking);
       background-color: var(--assistant-thinking-background);
     }
 
-    .assistant.thinkingMore:before,
-    .assistant.thoughtMore:before {
-      content: "↻";
-      position: absolute;
-      margin-left: -30px;
-      color: var(--primary-color);
-      opacity: 0;
-      transition: opacity .5s;
-      font-size: small;
-    }
-
-    .assistant.thoughtMore:before {
-      opacity: .5;
-    }
 
     @keyframes grow {
       from {
@@ -348,9 +332,7 @@ You should always make educated guesses and you should always provide suggestion
     async function getResponseFromCacheAndAppend() {
       try {
         const record = await getChatCompletionFromCache(chatActiveHistory);
-        const assistantBubble = await appendAssistantMessageAndSuggestions(record.smarterMessageJSON ?? record.messageJSON);
-        if (!record.smarterMessageJSON) 
-          assistantBubble.classList.add("thinkingMore");
+        const assistantBubble = await appendAssistantMessageAndSuggestions(record.messageJSON);
         record.visited = true;
         await setDataInDB(record);
       } catch (error) {
@@ -446,7 +428,7 @@ You should always make educated guesses and you should always provide suggestion
       record = { key: allPreviousUserMessages, messageJSON: messageJSON, visited: false };
       await setDataInDB(record);
       record = await getDataFromDB(allPreviousUserMessages);
-      record = { key: allPreviousUserMessages, messageJSON: record.messageJSON, smarterMessageJSON: smarterMessageJSON, visited: false};
+      record = { key: allPreviousUserMessages, messageJSON: record.messageJSON, visited: false};
       await setDataInDB(record);
       return record;
     }
